@@ -139,6 +139,7 @@ tr.psel td{background:#1d1d10}
     <button class="ibtn px" id="bCraft" title="שולחן מלאכה">🛠️</button>
     <button class="ibtn px" id="bStats" title="ההתקדמות שלי">📊</button>
     <button class="ibtn px" id="bHelp" title="מגילות ידע ועזרה">📜</button>
+    <button class="ibtn px" id="bMusic" title="מוזיקה">🎵</button>
     <button class="ibtn px" id="bMute" title="צליל">🔊</button>
   </div>
 </div>
@@ -531,6 +532,7 @@ function updateHUD(){
  ZONES.forEach((Z,i)=>{const s=document.createElement('div');s.className='slot';s.title=Z.oname;const c=document.createElement('canvas');c.width=c.height=16;c.getContext('2d').drawImage(TEX[B[Z.ore].t],0,0);s.appendChild(c);const b=document.createElement('b');b.textContent=S.inv[i];s.appendChild(b);inv.appendChild(s)});
  $('xpv').textContent=S.xp;$('stv').textContent=S.streak;
  $('bMute').textContent=S.muted?'🔇':'🔊';
+ $('bMusic').style.opacity=(S.music===false||S.muted)?.4:1;$('bMusic').style.textDecoration=S.music===false?'line-through':'none';
 }
 
 /* ---- Craft ---- */
@@ -650,7 +652,7 @@ function bossLose(){
 function bossWin(){
  boss=null;S.bossWins++;S.xp+=200;S.wonAt=Date.now();save();updateHUD();recBattle({t:Date.now(),res:'win',acc:totals().p});
  // celebration in the world: the test explodes into paper scraps
- celebrating=true;const bx=W/2,by=BED-2;
+ celebrating=true;mus.override='victory';const bx=W/2,by=BED-2;
  for(let i=0;i<70;i++)parts.push({x:bx,y:by,vx:(Math.random()-.5)*14,vy:-Math.random()*10-2,life:1.5+Math.random(),c:pick(['#f4f1e8','#e0312b','#9fb5d6','#fff']),s:.15+Math.random()*.15});
  SFX.hit();setTimeout(()=>SFX.win(),250);
  banner(`🎉 ניצחת את ${BOSS_NAME}! 🎉`,'הכנו לך תעודה…');
@@ -713,7 +715,7 @@ function openCertificate(fresh){
  let nt=0;$('nm').oninput=e=>{const v=e.target.value.trim();if(v)S.name=v;clearTimeout(nt);nt=setTimeout(()=>{render();save();touchSession()},400)};
  $('cpTxt').onclick=()=>{try{navigator.clipboard.writeText(shareText()).then(()=>toast('הטקסט הועתק! אפשר להדביק בהודעה 📋'),()=>toast('לא הצלחתי להעתיק – אפשר לשלוח דרך כפתור הוואטסאפ'))}catch(e){toast('לא הצלחתי להעתיק – אפשר לשלוח דרך כפתור הוואטסאפ')}};
  $('cpImg').onclick=()=>{try{cert.toBlob(b=>{navigator.clipboard.write([new ClipboardItem({'image/png':b})]).then(()=>toast('התעודה הועתקה! אפשר להדביק אותה בוואטסאפ 🖼️'),()=>toast('הדפדפן לא מאפשר להעתיק תמונה – שמרו אותה בלחיצה ארוכה / קליק ימני'))})}catch(e){toast('הדפדפן לא מאפשר להעתיק תמונה – שמרו אותה בלחיצה ארוכה / קליק ימני')}};
- $('cls').onclick=closePanel;$('st').onclick=openStats;
+ $('cls').onclick=()=>{mus.override=null;closePanel()};$('st').onclick=()=>{mus.override=null;openStats()};
 }
 
 /* ---- Start ---- */
@@ -886,8 +888,72 @@ function summaryText(){
 
 /* ================= AUDIO ================= */
 let AC=null;
-function audioInit(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
+function audioInit(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();musicSetup()}catch(e){}}
 function beep(f,d,type,vol,slide,delay){if(S&&S.muted)return;try{audioInit();if(!AC)return;const t0=AC.currentTime+(delay||0);const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t0);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t0+d);g.gain.setValueAtTime(vol||.06,t0);g.gain.exponentialRampToValueAtTime(.001,t0+d);o.connect(g);g.connect(AC.destination);o.start(t0);o.stop(t0+d+.02)}catch(e){}}
+
+/* ================= MUSIC (original chiptune, one theme per layer) ================= */
+const SONGS={
+ dirt:{bpm:132,wave:'triangle',vib:1,mv:.07,
+  mel:"G4 . B4 D5 E5 - D5 B4 C5 . E5 G5 A5 - G5 E5 D5 . B4 G4 A4 - B4 . G4 - - . . . . . G4 . B4 D5 E5 - D5 B4 C5 . E5 G5 A5 - G5 . B5 - A5 G5 E5 - D5 B4 G4 - - . D4 . . .",
+  bass:"G2 . G3 . G2 . G3 . C3 . C4 . C3 . C4 . D3 . D4 . D3 . D4 . G2 . G3 . G2 . D3 .",
+  drums:"k.h.s.h.k.k.s.h."},
+ stone:{bpm:116,wave:'square',mv:.035,
+  mel:"A4 - C5 - E5 - D5 C5 B4 - G4 - B4 - . . C5 - E5 - A5 - G5 E5 F5 - E5 - D5 - . . E5 - C5 - A4 - C5 D5 E5 - - - G5 - F5 E5 D5 - B4 - G4 - B4 D5 C5 - B4 - A4 - - -",
+  bass:"A2 . A2 E3 A2 . A2 E3 G2 . G2 D3 G2 . G2 D3 F2 . F2 C3 F2 . F2 C3 D2 . D2 A2 E2 . E2 B2",
+  drums:"k...s...k.k.s..."},
+ dark:{bpm:92,wave:'triangle',vib:1,mv:.08,
+  mel:"D5 - - - . . F5 - E5 - - - . . A4 - Bb4 - - - A4 - G4 - A4 - - - - - . . D5 - - - . . F5 - G5 - - - F5 - E5 - F5 - E5 - D5 - C#5 - D5 - - - - - . .",
+  bass:"D2 - - - D2 - - - C2 - - - C2 - - - Bb1 - - - Bb1 - - - A1 - - - A1 - - -",
+  drums:"k.......h.......k.......h...h..."},
+ crystal:{bpm:120,wave:'square',mv:.028,
+  mel:"E5 G#5 B5 E6 B5 G#5 E5 G#5 C#5 E5 G#5 C#6 G#5 E5 C#5 E5 A4 C#5 E5 A5 E5 C#5 A4 C#5 B4 D#5 F#5 B5 F#5 D#5 B4 D#5 E5 G#5 B5 E6 B5 G#5 E5 G#5 C#5 E5 G#5 C#6 G#5 E5 C#5 E5 A4 C#5 E5 A5 C#6 A5 F#5 D#5 E5 - B4 - E5 - . .",
+  bass:"E3 - - - E3 - - - C#3 - - - C#3 - - - A2 - - - A2 - - - B2 - - - B2 - - -",
+  drums:"k.h.s.h.k.h.s.hh"},
+ boss:{bpm:160,wave:'square',mv:.04,
+  mel:"C5 C5 . C5 Eb5 . G5 . F5 F5 . F5 Ab5 . G5 . Eb5 Eb5 . Eb5 D5 . C5 . D5 - G4 - B4 - D5 - C5 C5 . C5 Eb5 . G5 . Ab5 - G5 - F5 - Eb5 - D5 - Eb5 - F5 - G5 - C6 - - - . . . .",
+  bass:"C2 C3 C2 C3 C2 C3 C2 C3 F2 F3 F2 F3 F2 F3 F2 F3 Ab2 Ab3 Ab2 Ab3 Ab2 Ab3 Ab2 Ab3 G2 G3 G2 G3 G2 G3 B2 D3",
+  drums:"khs.khshkhs.kkss"},
+ victory:{bpm:126,wave:'square',mv:.04,
+  mel:"C5 E5 G5 C6 - - G5 - A5 - F5 - C6 - - - B5 - G5 - D6 - B5 - C6 - - - G5 - E5 - F5 - A5 - G5 - E5 - D5 - G5 - B5 - D6 - C6 - - - - - . .",
+  bass:"C3 . G3 . C3 . G3 . F3 . C4 . F3 . C4 . G3 . D4 . G3 . D4 . C3 . G3 . C3 . G3 .",
+  drums:"k.h.s.h."}
+};
+const NOTE_I={C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11};
+function nfreq(n){const m=n.match(/^([A-G][#b]?)(\d)$/);if(!m)return 0;return 440*Math.pow(2,(12*(+m[2]+1)+NOTE_I[m[1]]-69)/12)}
+function parseTrack(s){const t=s.trim().split(/\s+/);const out=[];for(let i=0;i<t.length;i++){if(t[i]==='.'||t[i]==='-'){out.push(null);continue}let len=1;while(t[i+len]==='-')len++;out.push({f:nfreq(t[i]),len})}return out}
+Object.values(SONGS).forEach(s=>{s.M=parseTrack(s.mel);s.B=parseTrack(s.bass);s.steps=s.M.length});
+let musicBus=null,noiseBuf=null,mus={song:null,step:0,next:0,timer:null,override:null};
+function musicSetup(){if(!AC||musicBus)return;musicBus=AC.createGain();musicBus.gain.value=.9;musicBus.connect(AC.destination);
+ noiseBuf=AC.createBuffer(1,AC.sampleRate*.4,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+ mus.timer=setInterval(musicTick,30)}
+function mNote(f,t,dur,wave,vol,vib){const o=AC.createOscillator(),g=AC.createGain();o.type=wave;o.frequency.setValueAtTime(f,t);
+ if(vib&&dur>.25){const l=AC.createOscillator(),lg=AC.createGain();l.frequency.value=5.5;lg.gain.value=f*.012;l.connect(lg);lg.connect(o.frequency);l.start(t+.12);l.stop(t+dur+.05)}
+ g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.setValueAtTime(vol*.8,t+Math.max(.02,dur*.6));g.gain.exponentialRampToValueAtTime(.0001,t+dur*.98);
+ o.connect(g);g.connect(musicBus);o.start(t);o.stop(t+dur+.02)}
+function mDrum(c,t){
+ if(c==='k'){const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(40,t+.12);g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.0001,t+.14);o.connect(g);g.connect(musicBus);o.start(t);o.stop(t+.16);return}
+ const s=AC.createBufferSource();s.buffer=noiseBuf;const f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=c==='h'?7000:1800;const g=AC.createGain();const d=c==='h'?.04:.12;g.gain.setValueAtTime(c==='h'?.035:.07,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(musicBus);s.start(t);s.stop(t+d+.02)}
+function wantedSong(){
+ if(mus.override)return mus.override;
+ if(boss)return 'boss';
+ if(!S||$('parent').classList.contains('on'))return null;
+ const y=S.py;return y<=18?'dirt':y<=30?'stone':y<=42?'dark':'crystal';
+}
+function musicTick(){
+ if(!AC||!S)return;
+ const on=!S.muted&&S.music!==false;
+ const want=on?wantedSong():null;
+ if(want!==mus.song){mus.song=want;mus.step=0;mus.next=AC.currentTime+.08}
+ if(!mus.song)return;
+ const sg=SONGS[mus.song],sd=60/sg.bpm/2;
+ while(mus.next<AC.currentTime+.15){
+  const i=mus.step,t=mus.next;
+  const m=sg.M[i%sg.steps];if(m&&m.f)mNote(m.f,t,m.len*sd,sg.wave,sg.mv,sg.vib);
+  const b=sg.B[i%sg.B.length];if(b&&b.f)mNote(b.f,t,b.len*sd*.9,'triangle',.09,0);
+  const dc=sg.drums[i%sg.drums.length];if(dc!=='.')mDrum(dc,t);
+  mus.step++;mus.next+=sd;
+ }
+}
 const SFX={
  mine(){beep(160,.07,'square',.05,70)},
  step(){beep(90,.03,'triangle',.03)},
@@ -1038,6 +1104,7 @@ document.querySelectorAll('#pad button').forEach(b=>{
  b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up);
  b.addEventListener('contextmenu',e=>e.preventDefault());
 });
+addEventListener('pointerdown',()=>audioInit(),true);
 cv.addEventListener('pointerdown',e=>{
  if(modal)return;audioInit();
  const cw=VW,ch=VH;let camX=rx*T+T/2-cw/2,camY=ry*T+T/2-ch/2+T*.5;camX=Math.max(0,Math.min(W*T-cw,camX));if(W*T<cw)camX=(W*T-cw)/2;camY=Math.max(-T*3,Math.min(H*T-ch,camY));
@@ -1052,6 +1119,7 @@ $('bCraft').onclick=()=>{if(!boss)openCraft()};
 $('bStats').onclick=()=>{if(!boss)openStats()};
 $('bHelp').onclick=()=>{if(!boss)openHelp()};
 $('bMute').onclick=()=>{S.muted=!S.muted;updateHUD();save()};
+$('bMusic').onclick=()=>{audioInit();S.music=S.music===false;updateHUD();save();toast(S.music===false?'המוזיקה כבויה 🔇':'המוזיקה פועלת 🎵',1500)};
 
 /* ================= BOOT ================= */
 buildTextures();resize();
