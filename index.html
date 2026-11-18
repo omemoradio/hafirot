@@ -346,7 +346,7 @@ const TOPIC_COL={conn:'#3d7fc4',num:'#c46a3d',id:'#9a6a1a',read:'#1f9a8f',boss:'
 const TOPIC_NAME={conn:'מילות הקישור',num:'שם המספר',id:'תעודת הזהות של הטקסט',read:'הבנת הנקרא'};
 const TOOLS=['מכוש עץ','מכוש אבן','מכוש ברזל','מכוש זהב'];
 const TOOL_COL=['#a0703a','#8f8f8f','#e0e0e0','#f2c94c'];
-const NEED=4, BOSS_NEED=5;
+const NEEDS=[7,10,7], BOSS_NEED=7; // correct answers needed per layer (stone caves need 10)
 function zoneAt(y){return y<=18?0:y<=30?1:y<=42?2:3}
 
 function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -539,8 +539,8 @@ function updateHUD(){
 function openCraft(){
  let h=`<h2>🛠️ שולחן מלאכה</h2><div class="small">כל מכוש חדש מאפשר לחצוב שכבה עמוקה יותר. עונים נכון על שאלות → אוספים עפרות → בונים מכוש.</div><br>`;
  for(let t=1;t<4;t++){
-  const have=S.inv[t-1],ore=ZONES[t-1].oname;const done=S.tier>=t;const can=!done&&S.tier===t-1&&have>=NEED;
-  h+=`<div class="recipe"><canvas data-t="${t}" width="16" height="16"></canvas><div class="r-txt"><b>${TOOLS[t]}</b><br>דרוש: ${NEED} ${ore} (יש לך ${have}) · פותח את "${ZONES[t].name}"</div>${done?'<span>✔ יש לך</span>':`<button class="btn" style="margin:0" data-craft="${t}" ${can?'':'disabled'}>בנה</button>`}</div>`;
+  const have=S.inv[t-1],ore=ZONES[t-1].oname;const done=S.tier>=t;const can=!done&&S.tier===t-1&&have>=NEEDS[t-1];
+  h+=`<div class="recipe"><canvas data-t="${t}" width="16" height="16"></canvas><div class="r-txt"><b>${TOOLS[t]}</b><br>דרוש: ${NEEDS[t-1]} ${ore} (יש לך ${have}) · פותח את "${ZONES[t].name}"</div>${done?'<span>✔ יש לך</span>':`<button class="btn" style="margin:0" data-craft="${t}" ${can?'':'disabled'}>בנה</button>`}</div>`;
  }
  const dOk=S.inv[3]>=BOSS_NEED;
  h+=`<div class="recipe"><canvas data-boss="1" width="16" height="16"></canvas><div class="r-txt"><b>מפתח החותם</b><br>אספו ${BOSS_NEED} יהלומים (יש לך ${S.inv[3]}) ואז חצבו את החותם הסגול בתחתית העולם.</div><span>${dOk?'✔ מוכן!':'🔒'}</span></div>`;
@@ -548,7 +548,7 @@ function openCraft(){
  openPanel(h);
  panel.querySelectorAll('canvas[data-t]').forEach(c=>{const g=c.getContext('2d');drawPix(g,PICK,{H:TOOL_COL[+c.dataset.t],W:'#7a5634'},0,0,2)});
  panel.querySelectorAll('canvas[data-boss]').forEach(c=>c.getContext('2d').drawImage(TEX.seal,0,0));
- panel.querySelectorAll('[data-craft]').forEach(b=>b.onclick=()=>{const t=+b.dataset.craft;S.inv[t-1]-=NEED;S.tier=t;SFX.craft();updateHUD();save();closePanel();banner(`נבנה: ${TOOLS[t]}!`,`עכשיו אפשר לחצוב את "${ZONES[t].name}"`)});
+ panel.querySelectorAll('[data-craft]').forEach(b=>b.onclick=()=>{const t=+b.dataset.craft;S.inv[t-1]-=NEEDS[t-1];S.tier=t;SFX.craft();updateHUD();save();closePanel();banner(`נבנה: ${TOOLS[t]}!`,`עכשיו אפשר לחצוב את "${ZONES[t].name}"`)});
  $('cls').onclick=closePanel;
 }
 
@@ -609,7 +609,7 @@ function openHelp(tab){
  <li><b>▲ / רווח</b> – קפיצה (או חציבה למעלה). <b>▼</b> – חציבה למטה.</li>
  <li>בטלפון: הכפתורים בפינה, או לוחצים על בלוק שצמוד לדמות.</li>
  <li>כל <b>עפרה</b> (בלוק עם נקודות צבעוניות) פותחת שאלה. תשובה נכונה = העפרה שלך. תשובה שגויה = העפרה הופכת לאבן, והשאלה תחזור אחר כך.</li>
- <li>אוספים ${NEED} עפרות ← בונים מכוש חדש ב־🛠️ ← יורדים לשכבה הבאה.</li>
+ <li>אוספים עפרות ← בונים מכוש חדש ב־🛠️ ← יורדים לשכבה הבאה. צריך ${NEEDS[0]} פחם, ${NEEDS[1]} ברזל ו־${NEEDS[2]} זהב.</li>
  <li>כל שכבה = נושא אחר במבחן. בתחתית ישן <b>המבחן הנוראי</b> – צריך ${BOSS_NEED} יהלומים כדי לפתוח את החותם הסגול.</li>
  <li>🏆 <b>איך מנצחים:</b> פוגעים במבחן הנוראי 8 פעמים (8 תשובות נכונות) לפני שנגמרים 3 הלבבות. המנצחים מקבלים תעודת הצטיינות לשליחה!</li>
  <li>📊 מראה את ההתקדמות ואת הטעויות שכדאי לחזור עליהן.</li></ul>`:SHEETS[tab];
@@ -897,10 +897,10 @@ const SONGS={
   mel:"G4 . B4 D5 E5 - D5 B4 C5 . E5 G5 A5 - G5 E5 D5 . B4 G4 A4 - B4 . G4 - - . . . . . G4 . B4 D5 E5 - D5 B4 C5 . E5 G5 A5 - G5 . B5 - A5 G5 E5 - D5 B4 G4 - - . D4 . . .",
   bass:"G2 . G3 . G2 . G3 . C3 . C4 . C3 . C4 . D3 . D4 . D3 . D4 . G2 . G3 . G2 . D3 .",
   drums:"k.h.s.h.k.k.s.h."},
- stone:{bpm:116,wave:'square',mv:.035,
+ stone:{bpm:96,wave:'triangle',vib:1,mv:.055,bv:.05,dv:.4,
   mel:"A4 - C5 - E5 - D5 C5 B4 - G4 - B4 - . . C5 - E5 - A5 - G5 E5 F5 - E5 - D5 - . . E5 - C5 - A4 - C5 D5 E5 - - - G5 - F5 E5 D5 - B4 - G4 - B4 D5 C5 - B4 - A4 - - -",
   bass:"A2 . A2 E3 A2 . A2 E3 G2 . G2 D3 G2 . G2 D3 F2 . F2 C3 F2 . F2 C3 D2 . D2 A2 E2 . E2 B2",
-  drums:"k...s...k.k.s..."},
+  drums:"k.......h.......k.......h...h..."},
  dark:{bpm:92,wave:'triangle',vib:1,mv:.08,
   mel:"D5 - - - . . F5 - E5 - - - . . A4 - Bb4 - - - A4 - G4 - A4 - - - - - . . D5 - - - . . F5 - G5 - - - F5 - E5 - F5 - E5 - D5 - C#5 - D5 - - - - - . .",
   bass:"D2 - - - D2 - - - C2 - - - C2 - - - Bb1 - - - Bb1 - - - A1 - - - A1 - - -",
@@ -930,9 +930,9 @@ function mNote(f,t,dur,wave,vol,vib){const o=AC.createOscillator(),g=AC.createGa
  if(vib&&dur>.25){const l=AC.createOscillator(),lg=AC.createGain();l.frequency.value=5.5;lg.gain.value=f*.012;l.connect(lg);lg.connect(o.frequency);l.start(t+.12);l.stop(t+dur+.05)}
  g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.setValueAtTime(vol*.8,t+Math.max(.02,dur*.6));g.gain.exponentialRampToValueAtTime(.0001,t+dur*.98);
  o.connect(g);g.connect(musicBus);o.start(t);o.stop(t+dur+.02)}
-function mDrum(c,t){
- if(c==='k'){const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(40,t+.12);g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.0001,t+.14);o.connect(g);g.connect(musicBus);o.start(t);o.stop(t+.16);return}
- const s=AC.createBufferSource();s.buffer=noiseBuf;const f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=c==='h'?7000:1800;const g=AC.createGain();const d=c==='h'?.04:.12;g.gain.setValueAtTime(c==='h'?.035:.07,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(musicBus);s.start(t);s.stop(t+d+.02)}
+function mDrum(c,t,dv){dv=dv||1;
+ if(c==='k'){const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(40,t+.12);g.gain.setValueAtTime(.18*dv,t);g.gain.exponentialRampToValueAtTime(.0001,t+.14);o.connect(g);g.connect(musicBus);o.start(t);o.stop(t+.16);return}
+ const s=AC.createBufferSource();s.buffer=noiseBuf;const f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=c==='h'?7000:1800;const g=AC.createGain();const d=c==='h'?.04:.12;g.gain.setValueAtTime((c==='h'?.035:.07)*dv,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(musicBus);s.start(t);s.stop(t+d+.02)}
 function wantedSong(){
  if(mus.override)return mus.override;
  if(boss)return 'boss';
@@ -949,8 +949,8 @@ function musicTick(){
  while(mus.next<AC.currentTime+.15){
   const i=mus.step,t=mus.next;
   const m=sg.M[i%sg.steps];if(m&&m.f)mNote(m.f,t,m.len*sd,sg.wave,sg.mv,sg.vib);
-  const b=sg.B[i%sg.B.length];if(b&&b.f)mNote(b.f,t,b.len*sd*.9,'triangle',.09,0);
-  const dc=sg.drums[i%sg.drums.length];if(dc!=='.')mDrum(dc,t);
+  const b=sg.B[i%sg.B.length];if(b&&b.f)mNote(b.f,t,b.len*sd*.9,'triangle',sg.bv||.09,0);
+  const dc=sg.drums[i%sg.drums.length];if(dc!=='.')mDrum(dc,t,sg.dv||1);
   mus.step++;mus.next+=sd;
  }
 }
@@ -997,13 +997,13 @@ function mine(x,y){
   return;
  }
  if(b.h>S.tier){
-  const need=b.h;toast(`הבלוק קשה מדי ל${TOOLS[S.tier]}!<br>צריך <b>${TOOLS[need]}</b> – אסוף ${NEED} ${ZONES[need-1].oname} ובנה אותו ב־🛠️`,3400);SFX.deny();shake=6;return;
+  const need=b.h;toast(`הבלוק קשה מדי ל${TOOLS[S.tier]}!<br>צריך <b>${TOOLS[need]}</b> – אסוף ${NEEDS[need-1]} ${ZONES[need-1].oname} ובנה אותו ב־🛠️`,3400);SFX.deny();shake=6;return;
  }
  if(b.ore!==undefined){
   const z=b.ore;const Z=ZONES[z];
   ask(nextQ(Z.topic),ok=>{
-   if(ok){set(x,y,0);S.inv[z]++;burst(x,y,b.pc,18);floats.push({x:x+.5,y:y,txt:`+1 ${Z.oname}`,life:1.4,col:Z.color});
-    if(S.inv[z]===NEED&&S.tier===z&&z<3)setTimeout(()=>toast(`יש לך ${NEED} ${Z.oname}! לחץ על 🛠️ כדי לבנות ${TOOLS[z+1]}`,3800),300);
+   if(ok){set(x,y,0);S.inv[z]++;burst(x,y,b.pc,18);floats.push({x:x+.5,y:y,txt:`+1 ${Z.oname}`+((z<3&&S.tier===z&&S.inv[z]<=NEEDS[z])?` (${S.inv[z]}/${NEEDS[z]})`:(z===3&&S.inv[3]<=BOSS_NEED)?` (${S.inv[3]}/${BOSS_NEED})`:''),life:1.4,col:Z.color});
+    if(z<3&&S.inv[z]===NEEDS[z]&&S.tier===z)setTimeout(()=>toast(`יש לך ${NEEDS[z]} ${Z.oname}! לחץ על 🛠️ כדי לבנות ${TOOLS[z+1]}`,3800),300);
     if(z===3&&S.inv[3]===BOSS_NEED)setTimeout(()=>toast(`💎 יש לך ${BOSS_NEED} יהלומים! רדו לחותם הסגול בתחתית.`,3800),300);
    }else{set(x,y,Z.base);burst(x,y,['#999','#555'],8)}
    ensureOres(z);updateHUD();save();
