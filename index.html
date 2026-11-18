@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>חפירות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:'Rubik',system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none}
+canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;touch-action:none}
+.px{border:4px solid #1b1b1f;box-shadow:inset -4px -4px 0 rgba(0,0,0,.35),inset 4px 4px 0 rgba(255,255,255,.18)}
+#hud{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:8px;flex-wrap:wrap;pointer-events:none;z-index:5}
+#hud>*{pointer-events:auto}
+#zoneTag{background:#2d2d35;padding:6px 10px;font-weight:700;font-size:14px;line-height:1.2}
+#zoneTag small{display:block;font-weight:400;color:#c9c9d6;font-size:12px}
+#inv{display:flex;gap:4px;background:#2d2d35;padding:4px}
+.slot{width:46px;height:46px;background:#8b8b93;position:relative;display:flex;align-items:center;justify-content:center;border:3px solid #3a3a42;box-shadow:inset 3px 3px 0 #55555d,inset -3px -3px 0 #b5b5bd}
+.slot img,.slot canvas{width:30px;height:30px;image-rendering:pixelated}
+.slot b{position:absolute;bottom:0;left:3px;font-size:14px;font-weight:900;text-shadow:2px 2px 0 #000}
+.slot.tool{background:#6d5a3f}
+#btns{display:flex;gap:4px;margin-inline-start:auto}
+.ibtn{width:46px;height:46px;font-size:22px;background:#6b6b75;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.ibtn:active{transform:translateY(2px)}
+#xp{background:#2d2d35;padding:6px 10px;font-weight:700;font-size:14px}
+#xp span{color:#7CFC6A}
+#pad{position:fixed;left:14px;bottom:14px;display:grid;grid-template-columns:repeat(3,62px);grid-template-rows:repeat(2,62px);gap:6px;direction:ltr;z-index:5}
+#pad button{font-size:24px;background:rgba(70,70,80,.82);color:#fff;font-family:inherit;touch-action:none}
+#pad button:active,#pad button.on{background:rgba(120,120,135,.95)}
+#pad .u{grid-column:2;grid-row:1}#pad .l{grid-column:1;grid-row:2}#pad .d{grid-column:2;grid-row:2}#pad .r{grid-column:3;grid-row:2}
+@media (hover:hover) and (pointer:fine){#pad{opacity:.55}}
+#hint{position:fixed;right:14px;bottom:14px;max-width:260px;background:rgba(30,30,36,.85);padding:8px 12px;font-size:13px;line-height:1.5;z-index:4;color:#ddd}
+@media (max-width:640px){#hint{display:none}.slot{width:40px;height:40px}.ibtn{width:40px;height:40px;font-size:19px}#zoneTag{font-size:12px}}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;z-index:20;padding:10px}
+#overlay.hidden{display:none}
+.panel{background:#c6c6c6;color:#222;width:min(680px,100%);max-height:calc(100vh - 20px);overflow:auto;padding:16px 18px;border:4px solid #000;box-shadow:inset -5px -5px 0 #555,inset 5px 5px 0 #fff}
+.panel h2{margin:0 0 8px;font-size:24px;font-weight:900}
+.panel h3{margin:14px 0 6px;font-size:18px}
+.chip{display:inline-block;padding:3px 10px;font-size:13px;font-weight:700;color:#fff;margin-bottom:8px;border:2px solid #000}
+.qtext{font-size:21px;font-weight:700;line-height:1.5;margin:6px 0 12px}
+.opts{display:grid;gap:8px}
+.opt{font-family:inherit;font-size:18px;font-weight:500;text-align:right;padding:11px 14px;background:#8b8b8b;color:#fff;cursor:pointer;border:3px solid #000;box-shadow:inset -4px -4px 0 #555,inset 4px 4px 0 #b9b9b9;text-shadow:1px 1px 0 #333}
+.opt:hover:not(:disabled){background:#9a9ab5;box-shadow:inset -4px -4px 0 #5a5a80,inset 4px 4px 0 #c8c8ff}
+.opt.ok{background:#3f9b3a!important;box-shadow:inset -4px -4px 0 #24601f,inset 4px 4px 0 #7fd877!important}
+.opt.bad{background:#b83a32!important;box-shadow:inset -4px -4px 0 #6d1e19,inset 4px 4px 0 #f08a82!important}
+.opt:disabled{cursor:default}
+.fb{margin-top:12px;padding:10px 12px;font-size:16px;line-height:1.6;border:3px solid #000}
+.fb.ok{background:#d5f5cf}.fb.bad{background:#fbd9d5}
+.fb b{font-size:18px}
+.btn{font-family:inherit;font-size:18px;font-weight:700;padding:10px 20px;background:#6b8f3a;color:#fff;cursor:pointer;border:3px solid #000;box-shadow:inset -4px -4px 0 #3c5520,inset 4px 4px 0 #a2c86a;text-shadow:1px 1px 0 #222;margin-top:12px}
+.btn.gray{background:#7a7a7a;box-shadow:inset -4px -4px 0 #444,inset 4px 4px 0 #aaa}
+.btn:disabled{opacity:.45;cursor:default}
+.doc{background:#fbf6e6;border:3px solid #6b5a3a;padding:10px 14px;margin-bottom:10px;max-height:38vh;overflow:auto;line-height:1.75;font-size:16px;color:#2a2418;user-select:text;-webkit-user-select:text}
+.doc-t{font-size:19px;font-weight:900;margin-bottom:2px}
+.doc-by{font-size:13px;color:#6b5a3a;margin-bottom:6px;border-bottom:1px dashed #b9a67f;padding-bottom:5px}
+.doc p{margin:0 0 8px}
+.recipe{display:flex;align-items:center;gap:12px;background:#8b8b8b;padding:10px;margin-bottom:8px;border:3px solid #000;color:#fff}
+.recipe .r-txt{flex:1;font-size:15px;line-height:1.5}
+.recipe .r-txt b{font-size:17px}
+.recipe canvas{width:44px;height:44px;image-rendering:pixelated;background:#555;border:2px solid #000}
+.statrow{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:15px}
+.statrow .nm{width:190px;font-weight:700}
+.bar{flex:1;height:18px;background:#888;border:2px solid #000;position:relative}
+.bar i{position:absolute;top:0;bottom:0;right:0;background:#3f9b3a}
+.mist{font-size:14px;line-height:1.5;background:#e4e4e4;border:2px solid #777;padding:6px 8px;margin:5px 0}
+.mist .a{color:#1d6b18;font-weight:700}
+table.cs{width:100%;border-collapse:collapse;font-size:15px;background:#eee}
+table.cs td,table.cs th{border:2px solid #555;padding:5px 7px;text-align:right;vertical-align:top}
+table.cs th{background:#777;color:#fff}
+ul.cs{margin:4px 0;padding-inline-start:20px;line-height:1.7;font-size:15px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.tab{font-family:inherit;font-size:14px;font-weight:700;padding:6px 10px;background:#8b8b8b;color:#fff;border:3px solid #000;cursor:pointer}
+.tab.on{background:#4a6fa5}
+.bossbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;background:#2b2233;padding:8px;border:3px solid #000;color:#fff}
+.bossbar canvas{width:64px;height:64px;image-rendering:pixelated}
+.hp{flex:1}
+.hp .bar i{background:#b04fe0}
+.hearts{font-size:20px;letter-spacing:2px}
+#toast{position:fixed;top:72px;left:50%;transform:translateX(-50%);background:rgba(25,25,30,.92);padding:10px 16px;font-size:16px;font-weight:500;z-index:15;max-width:90vw;text-align:center;border:3px solid #000;display:none;line-height:1.5}
+#banner{position:fixed;top:30%;left:0;right:0;text-align:center;z-index:12;pointer-events:none;opacity:0;transition:opacity .5s}
+#banner.show{opacity:1}
+#banner div{display:inline-block;background:rgba(0,0,0,.7);padding:14px 26px;border:4px solid #000}
+#banner .b1{font-size:30px;font-weight:900;display:block;text-shadow:3px 3px 0 #000}
+#banner .b2{font-size:17px;color:#ffe27a;display:block;margin-top:4px}
+.title{font-size:40px;font-weight:900;text-align:center;color:#3d3d3d;text-shadow:3px 3px 0 #fff;margin:4px 0}
+.sub{text-align:center;font-size:17px;margin-bottom:10px}
+.center{text-align:center}
+.small{font-size:14px;color:#444;line-height:1.6}
+
+#parent{position:fixed;inset:0;background:#0b0b12;color:#eee;overflow:auto;display:none;z-index:100;touch-action:auto;-webkit-user-select:text;user-select:text;font:500 15px/1.5 Rubik}
+#parent.on{display:block}
+#parent .pw{max-width:980px;margin:0 auto;padding:22px 18px 60px}
+#parent h1{font:900 26px Rubik;margin:0;display:flex;align-items:center;gap:10px}
+#parent h1 .tag{font-size:15px;color:#f2c418;border:2px solid #f2c418;padding:1px 8px}
+#parent h2{font:700 18px Rubik;margin:28px 0 10px;color:#f2c418}
+.ptop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.ptop .sp{flex:1}
+#parent .chip{display:inline-block;border:1px solid #555;border-radius:999px;padding:3px 12px;font-size:13px;color:#ccc;font-weight:500;margin:0}
+#parent .chip.ok{border-color:#3a6;color:#7e7}
+.pbtn{background:#1c1c28;color:#fff;border:1px solid #444;border-radius:8px;padding:7px 14px;font:700 14px Rubik;cursor:pointer}
+.pbtn:hover{border-color:#f2c418}
+.pbtn.danger{border-color:#733;color:#f99}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.card{background:#151520;border:1px solid #2a2a3a;border-radius:10px;padding:12px 14px}
+.card b{display:block;font:900 26px Rubik;color:#fff}
+.card span{color:#aaa;font-size:13px}
+table.pt{width:100%;border-collapse:collapse;font-size:14px}
+table.pt th{text-align:right;color:#999;font-weight:700;border-bottom:1px solid #333;padding:6px 8px}
+table.pt td{border-bottom:1px solid #222;padding:7px 8px;vertical-align:middle}
+.ptw{overflow-x:auto}
+.pbar{height:12px;background:#262636;border-radius:6px;overflow:hidden;min-width:120px;position:relative}
+.pbar i{position:absolute;right:0;top:0;bottom:0;border-radius:6px}
+.rec{background:#1a1a10;border:1px solid #554;border-radius:10px;padding:12px 14px;margin-top:12px}
+.days{display:flex;align-items:flex-end;gap:6px;height:130px;padding-top:10px;direction:ltr}
+.day{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:11px;color:#888}
+.day .col{width:100%;max-width:34px;background:#2d6cdf;border-radius:4px 4px 0 0;position:relative}
+.day .col i{position:absolute;left:0;right:0;bottom:0;background:#36c36b;border-radius:4px 4px 0 0}
+.day .n{color:#ccc;font-size:11px}
+.legend{font-size:12px;color:#999;margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 2px;vertical-align:middle}
+.muted{color:#888}
+#copyArea{width:100%;height:160px;background:#111;color:#eee;border:1px solid #444;margin-top:8px;display:none;font:13px monospace;direction:rtl}
+.note{font-size:13px;color:#999;margin-top:8px}
+.pview{margin-top:18px;display:flex;align-items:center;gap:10px;font-weight:700;background:#151520;border:1px solid #2a2a3a;border-radius:10px;padding:10px 14px}
+.pview select{background:#000;color:#f2c418;border:1px solid #555;border-radius:6px;font:700 15px Rubik;padding:4px 8px}
+tr.psel td{background:#1d1d10}
+#nameIn{font-family:inherit;font-size:20px;padding:8px 12px;border:3px solid #000;width:min(320px,100%);text-align:center}
+#nameIn.err{border-color:#b83a32;background:#fde}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div id="zoneTag" class="px"></div>
+  <div id="inv" class="px"></div>
+  <div id="xp" class="px">⭐ <span id="xpv">0</span> · 🔥 <span id="stv">0</span></div>
+  <div id="btns">
+    <button class="ibtn px" id="bCraft" title="שולחן מלאכה">🛠️</button>
+    <button class="ibtn px" id="bStats" title="ההתקדמות שלי">📊</button>
+    <button class="ibtn px" id="bHelp" title="מגילות ידע ועזרה">📜</button>
+    <button class="ibtn px" id="bMute" title="צליל">🔊</button>
+  </div>
+</div>
+<div id="pad">
+  <button class="u px" data-k="U">▲</button>
+  <button class="l px" data-k="L">◀</button>
+  <button class="d px" data-k="D">▼</button>
+  <button class="r px" data-k="R">▶</button>
+</div>
+<div id="hint" class="px">חיצים / WASD: זזים וחוצבים · ▲ קפיצה · ▼ חציבה למטה · אפשר גם ללחוץ על בלוק צמוד</div>
+<div id="toast"></div>
+<div id="banner"><div><span class="b1" id="ban1"></span><span class="b2" id="ban2"></span></div></div>
+<div id="overlay"><div class="panel" id="panel"></div></div>
+<div id="parent"><div class="pw" id="pw"></div></div>
+
+<script>
+"use strict";
+/* ================= CONTENT ================= */
+
+// [question, [correct, wrong...], explanation]
+const CONN=[
+[`רציתי לצאת לשחק בחוץ, ___ התחיל לרדת גשם.`,[`אבל`,`לכן`,`כדי`,`למשל`],`"אבל" מביעה <b>ניגוד</b>: רציתי לצאת – אבל קרה משהו שמנע את זה.`],
+[`דני התאמן כל יום, ___ ניצח בתחרות.`,[`ולכן`,`אף על פי ש`,`כאילו`,`למרות`],`"ולכן" מביעה <b>תוצאה</b>: האימונים (סיבה) ← הניצחון (תוצאה).`],
+[`לא הלכתי לבית הספר ___ הייתי חולה.`,[`כי`,`לכן`,`אולם`,`כדי`],`"כי" מביעה <b>סיבה</b>: למה לא הלכתי? כי הייתי חולה.`],
+[`קמתי מוקדם ___ להספיק לאוטובוס.`,[`כדי`,`כי`,`אבל`,`לכן`],`"כדי" מביעה <b>תכלית (מטרה)</b>: בשביל מה קמתי מוקדם? כדי להספיק.`],
+[`___ תסיים את שיעורי הבית, תוכל לשחק.`,[`אם`,`למרות ש`,`משום ש`,`אולם`],`"אם" מביעה <b>תנאי</b>: המשחק תלוי בסיום שיעורי הבית.`],
+[`בגן החיות יש חיות רבות, ___ אריות, ג'ירפות וזברות.`,[`כגון`,`לכן`,`אך`,`כדי`],`"כגון" מביעה <b>דוגמה</b>: אריות, ג'ירפות וזברות הן דוגמאות לחיות.`],
+[`הוא לא רק שר יפה, ___ מנגן בגיטרה.`,[`אלא גם`,`אלא אם כן`,`כי`,`לכן`],`הצירוף "לא רק... <b>אלא גם</b>" מביע <b>הוספה</b>.`],
+[`___ שהיה עייף מאוד, המשיך ללמוד עד מאוחר.`,[`למרות`,`בגלל`,`כדי`,`לכן`],`"למרות ש" מביעה <b>ויתור</b>: היה עייף – ובכל זאת המשיך. ציפינו שיפסיק, אבל זה לא קרה.`],
+[`אחי אוהב כדורגל, ___ אחותי מעדיפה כדורסל.`,[`ואילו`,`לכן`,`כי`,`כדי`],`"ואילו" מביעה <b>ניגוד</b> בין שני דברים: אחי לעומת אחותי.`],
+[`מה הקשר שיוצרת מילת הקישור "לפיכך"?`,[`תוצאה`,`ניגוד`,`סיבה`,`הוספה`],`"לפיכך" = לכן, על כן. זו מילת <b>תוצאה</b>.`],
+[`"כלומר" היא מילת קישור של:`,[`הסבר (פירוש)`,`ויתור`,`תנאי`,`זמן`],`"כלומר" באה להסביר במילים אחרות את מה שנאמר קודם – <b>הסבר</b>.`],
+[`"אף על פי ש" מביעה קשר של:`,[`ויתור`,`סיבה`,`תכלית`,`תוצאה`],`"אף על פי ש" = "למרות ש" – קשר של <b>ויתור</b>.`],
+[`"משום ש" מביעה קשר של:`,[`סיבה`,`תוצאה`,`תכלית`,`הוספה`],`"משום ש" = "כי", "מפני ש" – <b>סיבה</b>.`],
+[`איזו מילת קישור מביעה הוספה?`,[`כמו כן`,`לעומת זאת`,`לכן`,`כי`],`"כמו כן" = בנוסף, וגם – <b>הוספה</b>.`],
+[`באיזו מילה מתאים לפתוח את פסקת הסיכום?`,[`לסיכום`,`לדוגמה`,`אולם`,`משום ש`],`"לסיכום" פותחת סיכום של הטקסט.`],
+[`"הכביש היה רטוב, לכן הנסיעה הייתה איטית." במקום "לכן" אפשר לכתוב:`,[`על כן`,`אולם`,`כגון`,`כדי ש`],`"על כן" היא גם מילת <b>תוצאה</b>, כמו "לכן". המשמעות נשמרת.`],
+[`"הסרט היה ארוך, אבל מעניין." במקום "אבל" אפשר לכתוב:`,[`אך`,`לכן`,`כי`,`כלומר`],`"אך" היא גם מילת <b>ניגוד</b>, כמו "אבל".`],
+[`"נשארנו בבית כי היה חם מאוד." במקום "כי" אפשר לכתוב:`,[`מפני ש`,`כדי ש`,`אף על פי ש`,`לכן`],`"מפני ש" היא גם מילת <b>סיבה</b>, כמו "כי".`],
+[`___ שהגענו לים, נכנסנו מיד למים.`,[`ברגע`,`למרות`,`כדי`,`אלא`],`"ברגע ש" מביעה <b>זמן</b>: מתי נכנסנו? ברגע שהגענו.`],
+[`המורה הסבירה שוב, ___ שכולם יבינו.`,[`כדי`,`משום`,`אולם`,`לכן`],`"כדי ש" מביעה <b>תכלית</b>: המטרה – שכולם יבינו.`],
+[`במשפט "ירד שלג, ולכן בית הספר נסגר" – מהי הסיבה ומהי התוצאה?`,[`סיבה: ירד שלג. תוצאה: בית הספר נסגר.`,`סיבה: בית הספר נסגר. תוצאה: ירד שלג.`,`שני החלקים הם סיבות.`,`אין במשפט סיבה ותוצאה.`],`מה שבא <b>לפני</b> "לכן" הוא הסיבה, ומה שבא <b>אחרי</b> "לכן" הוא התוצאה.`],
+[`במשפט "אף על פי שהתאמנו קשה, הפסדנו" הקשר הוא:`,[`ויתור`,`סיבה ותוצאה`,`תכלית`,`תנאי`],`התאמנו – ובכל זאת הפסדנו. ציפינו לתוצאה אחרת = <b>ויתור</b>.`],
+[`איזו מילת קישור מביעה זמן?`,[`לאחר מכן`,`כלומר`,`למשל`,`אולם`],`"לאחר מכן" מסדרת אירועים לפי <b>זמן</b>.`],
+[`איזו מילה <u>אינה</u> מביעה ניגוד?`,[`לפיכך`,`אולם`,`אך`,`לעומת זאת`],`"לפיכך" מביעה <b>תוצאה</b>. כל השאר הן מילות ניגוד.`],
+[`"אילו ידעתי שאתה מגיע, הייתי מחכה." המילה "אילו" מביעה:`,[`תנאי`,`זמן`,`סיבה`,`הוספה`],`"אילו" מביעה <b>תנאי</b> (תנאי שלא התקיים).`],
+[`הטלפון לא נטען, ___ לא יכולתי להתקשר.`,[`ולכן`,`למרות ש`,`כגון`,`כדי`],`הטלפון לא נטען (סיבה) ← לא יכולתי להתקשר (<b>תוצאה</b>).`],
+[`"בגלל הגשם המשחק נדחה." מה הקשר שיוצרת המילה "בגלל"?`,[`סיבה`,`תוצאה`,`ניגוד`,`דוגמה`],`"בגלל" מציגה את <b>הסיבה</b>: למה המשחק נדחה? בגלל הגשם.`],
+[`נלך לטיול ___ ירד גשם חזק.`,[`אלא אם כן`,`כדי ש`,`כי`,`כגון`],`"אלא אם כן" מביעה <b>תנאי</b>: הטיול יתקיים, חוץ ממקרה שבו ירד גשם.`]
+];
+
+const NUM_STATIC=[
+[`איך כותבים במילים: 200 ספרים?`,[`מאתיים ספרים`,`שתי מאות ספרים`,`שני מאות ספרים`,`מאה שתיים ספרים`],`200 = <b>מאתיים</b>. 300 = שלוש מאות, 400 = ארבע מאות.`],
+[`איך כותבים במילים: 2,000 אנשים?`,[`אלפיים אנשים`,`שני אלפים אנשים`,`שתי אלף אנשים`,`שניים אלף אנשים`],`2,000 = <b>אלפיים</b>. 3,000 = שלושת אלפים.`],
+[`איך כותבים במילים: 3,000 שקלים?`,[`שלושת אלפים שקלים`,`שלוש אלף שקלים`,`שלושה אלף שקלים`,`שלוש אלפים שקלים`],`"אלף" הוא זכר, ולכן: <b>שלושת אלפים</b>, ארבעת אלפים, חמשת אלפים.`],
+[`איך כותבים במילים: 300 מטר?`,[`שלוש מאות מטר`,`שלושה מאות מטר`,`שלושת מאות מטר`,`שלוש מאה מטר`],`"מאה" היא נקבה, ולכן: <b>שלוש מאות</b>, ארבע מאות, חמש מאות.`],
+[`מהו "מספר מונה"?`,[`מספר שסופר כמות (שלושה ספרים)`,`מספר שמציין מקום בתור (השלישי)`,`מספר טלפון`,`מספר עם נקודה עשרונית`],`המספר <b>המונה</b> סופר <b>כמה</b>: שלושה ספרים, חמש מחברות. ה"שלישי" הוא מספר סודר.`],
+[`איזה מספר נכתב <u>אותו דבר</u> בזכר ובנקבה?`,[`עשרים`,`שלושה`,`חמש`,`אחד עשר`],`העשרות (עשרים, שלושים, ארבעים...) זהות בזכר ובנקבה: עשרים ספרים, עשרים מחברות.`],
+[`באיזה משפט יש טעות?`,[`יש לי שתיים אחיות.`,`קראתי שני ספרים.`,`חיכיתי עשר דקות.`,`ראיתי שבע יונים.`],`לפני שם עצם אומרים <b>שתי</b> ולא "שתיים": יש לי <b>שתי</b> אחיות.`],
+[`איך אומרים נכון: 32 תלמידים?`,[`שלושים ושניים תלמידים`,`שלושים ושתיים תלמידים`,`שלושים ושני תלמידים`,`שלושים שתיים תלמידים`],`"תלמיד" זכר. במספר מורכב היחידות באות בצורה המלאה: שלושים <b>ושניים</b> תלמידים (ובנקבה: שלושים ושתיים תלמידות).`],
+[`איך אומרים נכון: 21 שנים?`,[`עשרים ואחת שנים`,`עשרים ואחד שנים`,`עשרים ואחת שנה`,`עשרים אחד שנים`],`"שנה" היא נקבה (שנה אחת), ולכן: עשרים <b>ואחת</b> שנים.`]
+];
+
+const CARDS=[
+{title:`למה הדבורים חשובות לנו?`,author:`ד"ר מיכל שמיר`,source:`המגזין "מדע צעיר", גיליון 42`,date:`מרץ 2025`,paras:[`דבורים לא רק מייצרות דבש. הן מאביקות פרחים רבים, וכך עוזרות לגדל פירות וירקות. בשנים האחרונות מספר הדבורים בעולם יורד, ומדענים מנסים להבין מדוע.`]},
+{title:`עוגיות שוקולד ב־20 דקות`,author:`השף אבי`,source:`אתר האינטרנט "מטבח לכל המשפחה"`,date:`2024`,paras:[`<b>מה צריך:</b> 2 כוסות קמח, כוס סוכר, 100 גרם חמאה, ביצה וחצי כוס שוקולד צ'יפס.`,`<b>איך מכינים:</b> 1. מחממים תנור ל־180 מעלות. 2. מערבבים את כל החומרים לבצק אחיד. 3. יוצרים כדורים, משטחים אותם ואופים כ־12 דקות.`]},
+{title:`צריך להאריך את ההפסקה הגדולה!`,author:`יואב לוי, כיתה ח'2`,source:`עיתון בית הספר "קול המסדרון"`,date:`מאי 2025`,paras:[`לדעתי, עשרים דקות של הפסקה הן פשוט לא מספיק. תלמידים צריכים זמן לאכול, לשחק ולנוח, כדי לחזור לשיעור מרוכזים. לכן אני מציע להאריך את ההפסקה הגדולה לחצי שעה.`]},
+{title:`החתול שידע לחכות`,author:`רונית בר`,source:`הספר "סיפורים לפני השינה"`,date:`2019`,paras:[`בכל ערב ישב החתול מוצי ליד החלון וחיכה. השכנים חשבו שהוא מחכה לציפורים, אבל רק הילדה הקטנה מהקומה השלישית ידעה את הסוד: מוצי חיכה לה.`]}
+];
+// [cardIndex or -1, question, options(first correct), explanation]
+const IDQ=[
+[0,`מי כתבה את הטקסט?`,[`ד"ר מיכל שמיר`,`המגזין "מדע צעיר"`,`הדבורים`,`לא ידוע`],`שם הכותב מופיע בשורה שמתחת לכותרת ("מאת").`],
+[0,`מהו המקור של הטקסט?`,[`מגזין מדע`,`ספר סיפורים`,`אתר מתכונים`,`עיתון בית ספר`],`המקור הוא המקום שבו הטקסט פורסם: המגזין "מדע צעיר".`],
+[0,`מהי הסוגה של הטקסט?`,[`מידעי`,`סיפורי`,`טיעוני`,`הוראות`],`הטקסט מוסר <b>מידע</b> ועובדות על דבורים, בלי עלילה ובלי ניסיון לשכנע.`],
+[0,`מי קהל היעד של הטקסט, ככל הנראה?`,[`בני נוער שמתעניינים במדע`,`פעוטות בגן`,`כוורנים מקצועיים בלבד`,`שפים`],`שם המגזין "מדע <b>צעיר</b>" והשפה הפשוטה מרמזים שהטקסט מיועד לבני נוער.`],
+[1,`מהי הסוגה של הטקסט?`,[`הוראות (מתכון)`,`סיפורי`,`טיעוני`,`שיר`],`יש רשימת חומרים ושלבים ממוספרים – זה טקסט <b>הוראות</b>.`],
+[1,`מהי מטרת הטקסט?`,[`להדריך איך להכין משהו`,`לשכנע לאכול בריא`,`לספר סיפור מצחיק`,`למסור חדשות`],`מטרת טקסט הוראות היא <b>להדריך</b>: מה עושים, ובאיזה סדר.`],
+[1,`היכן פורסם הטקסט?`,[`באתר אינטרנט`,`בעיתון יומי`,`בספר לימוד`,`בעלון של בית חולים`],`בשורת המקור כתוב: אתר האינטרנט "מטבח לכל המשפחה".`],
+[1,`מה מאפיין את הסוגה של הטקסט הזה?`,[`רשימת חומרים ושלבים ממוספרים`,`דמויות ועלילה`,`הבעת דעה ונימוקים`,`חרוזים`],`בטקסט הוראות יש בדרך כלל רשימה ושלבים לפי סדר.`],
+[2,`מהי הסוגה של הטקסט?`,[`טיעוני`,`מידעי`,`סיפורי`,`הוראות`],`הכותב מביע <b>דעה</b> ("לדעתי") ומנמק אותה – זה טקסט <b>טיעוני</b>.`],
+[2,`מהי מטרת הטקסט?`,[`לשכנע`,`לבדר`,`להדריך`,`לתאר מקום`],`טקסט טיעוני נועד <b>לשכנע</b> את הקוראים לקבל עמדה.`],
+[2,`מי קהל היעד של הטקסט?`,[`תלמידים ומורים בבית הספר`,`ילדי גן`,`תיירים`,`רופאים`],`הטקסט פורסם בעיתון <b>בית הספר</b> ועוסק בהפסקה – הוא מיועד לתלמידים ולמורים.`],
+[2,`איזה ביטוי בטקסט מראה שזה טקסט טיעוני?`,[`"לדעתי"`,`"עשרים דקות"`,`"לאכול, לשחק ולנוח"`,`"ההפסקה הגדולה"`],`"לדעתי" מראה שהכותב מביע <b>עמדה אישית</b>.`],
+[3,`מהי הסוגה של הטקסט?`,[`סיפורי`,`מידעי`,`טיעוני`,`הוראות`],`יש דמויות (החתול, הילדה) ועלילה – זה טקסט <b>סיפורי</b>.`],
+[3,`מהו המקור של הטקסט?`,[`ספר`,`עיתון`,`אתר אינטרנט`,`מגזין מדע`],`בשורת המקור כתוב: הספר "סיפורים לפני השינה".`],
+[3,`מהי מטרת הטקסט, ככל הנראה?`,[`לבדר ולגעת ברגש`,`לשכנע`,`להדריך`,`למסור עובדות מדעיות`],`סיפור נועד בעיקר <b>לבדר</b>, לרגש ולפעמים להעביר מסר.`],
+[3,`מי קהל היעד של הטקסט, ככל הנראה?`,[`ילדים`,`מדענים`,`נהגים`,`עורכי דין`],`שם הספר "סיפורים לפני <b>השינה</b>" מרמז שהוא מיועד לילדים.`],
+[-1,`מהם הרכיבים של "תעודת הזהות" של טקסט?`,[`כותרת, כותב, מקור, תאריך, סוגה, קהל יעד ומטרה`,`רק הכותרת`,`מספר הפסקאות והמילים`,`שמות הדמויות בלבד`],`תעודת הזהות עונה על השאלות: מה שם הטקסט? מי כתב? איפה ומתי פורסם? איזה סוג טקסט? למי הוא מיועד? ולמה נכתב?`],
+[-1,`מהי המטרה העיקרית של טקסט טיעוני?`,[`לשכנע`,`לבדר`,`להדריך`,`לספר סיפור`],`טקסט <b>טיעוני</b> = עמדה + נימוקים, כדי לשכנע.`],
+[-1,`איזה מהטקסטים הבאים הוא טקסט מידעי?`,[`ערך באנציקלופדיה על הירח`,`אגדה על נסיכה`,`מכתב שכנוע לראש העירייה`,`הוראות הרכבה של ארון`],`ערך באנציקלופדיה מוסר <b>מידע</b> ועובדות.`],
+[-1,`למה חשוב לדעת את תאריך הפרסום של טקסט?`,[`כדי לדעת אם המידע עדכני`,`כדי לדעת מי הכותב`,`כדי לספור את המילים`,`זה לא חשוב בכלל`],`מידע ישן עלול להיות לא מעודכן – לכן בודקים <b>מתי</b> הטקסט פורסם.`],
+[-1,`איך אפשר לזהות את קהל היעד של טקסט?`,[`לפי המקור, הנושא והשפה`,`לפי אורך הכותרת`,`לפי מספר הפסקאות`,`אי אפשר לזהות`],`המקור (למשל מגזין לנוער), הנושא והשפה (פשוטה או מקצועית) מגלים למי הטקסט מיועד.`],
+[-1,`מה המטרה העיקרית של טקסט סיפורי?`,[`לבדר ולהעביר מסר`,`לתת הוראות`,`למסור נתונים`,`לשכנע לקנות מוצר`],`בטקסט סיפורי יש דמויות ועלילה – הוא נועד לבדר, לרגש ולפעמים ללמד מסר.`]
+];
+
+const PASSAGES=[
+{title:`המים שבאים מהים`,author:`עידו כהן`,source:`האתר "גלים – מדע לבני נוער"`,date:`2025`,paras:[
+`ישראל היא מדינה שבה יורד מעט גשם, ובמשך שנים רבות סבלה ממחסור במים. מקורות המים הטבעיים – הכנרת ומי התהום – לא הספיקו לאוכלוסייה שהלכה וגדלה. כדי לפתור את הבעיה, החלה ישראל לפני כעשרים שנה להקים מתקני התפלה לאורך חוף הים התיכון.`,
+`התפלה היא תהליך שבו מוציאים את המלח ממי הים, וכך הופכים אותם למים ראויים לשתייה. בשיטה הנפוצה דוחסים את מי הים בלחץ גבוה דרך מסננים דקים מאוד, שמעבירים את המים אך עוצרים את המלח.`,
+`כיום, רוב המים שאנחנו שותים בבית מגיעים ממתקני ההתפלה. עם זאת, לתהליך יש גם חסרונות: הוא דורש כמות גדולה של חשמל, והמים המלוחים מאוד שנשארים מוחזרים לים ועלולים לפגוע בבעלי החיים שבו. לכן חוקרים מחפשים דרכים להתפיל מים בעזרת אנרגיית השמש ולהחזיר את המלח לים בזהירות רבה יותר.`]},
+{title:`למה בני נוער מתקשים לקום בבוקר?`,author:`נטע אלון`,source:`העיתון "הנוער של היום", מדור בריאות`,date:`ספטמבר 2025`,paras:[
+`הורים רבים בטוחים שבני נוער מתעוררים מאוחר פשוט משום שהם עצלנים. אולם מחקרים מראים שהסיבה שונה לגמרי. בגיל ההתבגרות משתנה "השעון הביולוגי" של הגוף: המוח מתחיל להפריש את הורמון השינה, מלטונין, מאוחר יותר בערב. כתוצאה מכך, בני נוער מרגישים עייפים רק בשעה מאוחרת, ומתקשים להתעורר מוקדם.`,
+`מומחים ממליצים שבני נוער יישנו בין שמונה לעשר שעות בלילה. אך בפועל, רבים מהם ישנים פחות, בין היתר בגלל מסכים: האור של הטלפון מעכב את הפרשת המלטונין ומקשה עוד יותר להירדם.`,
+`מה אפשר לעשות? כדאי להניח את הטלפון בצד כשעה לפני השינה, ללכת לישון בשעה קבועה ולהימנע ממשקאות עם קפאין בערב. בכמה מקומות בעולם אף החליטו להתחיל את יום הלימודים מאוחר יותר, והתלמידים שם דיווחו שהם מרוכזים יותר בשיעורים.`]},
+{title:`הגשר של נועם`,author:`גלית דרור`,source:`הספר "סיפורים מהחצר"`,date:`2022`,paras:[
+`נועם עבד שלושה שבועות על דגם של גשר מקיסמים לתחרות המדע של בית הספר. כל ערב, אחרי שסיים את שיעורי הבית, הדביק בזהירות עוד ועוד קיסמים, עד שהגשר היה ארוך כמו זרוע.`,
+`בבוקר התחרות, כשנועם ירד מהאוטובוס, הוא מעד. הקופסה נפלה מידיו, וכשפתח אותה ראה שאמצע הגשר נשבר. עיניו התמלאו דמעות. "שלושה שבועות של עבודה – הלכו," לחש.`,
+`שירה, חברתו לכיתה, ראתה אותו יושב על המדרגות. "יש לי דבק בתיק," אמרה, "ועוד חצי שעה עד שהשופטים מגיעים." יחד הם חיזקו את החלק השבור, ונועם אף הוסיף קורות תמיכה שלא היו בתכנון המקורי.`,
+`הגשר לא זכה במקום הראשון. אבל כשהשופטים בדקו כמה משקל הוא מחזיק, התברר שהוא החזק ביותר בתחרות. "לפעמים," אמר נועם לשירה בדרך הביתה, "דווקא מה שנשבר מלמד אותך לבנות טוב יותר."`]}
+];
+// [passage, question, options(first correct), explanation]
+const READQ=[
+[0,`מהי הבעיה שמתוארת בפסקה הראשונה?`,[`מחסור במים`,`זיהום אוויר`,`ים מלוכלך`,`מחסור בחשמל`],`בפסקה הראשונה כתוב שישראל "סבלה ממחסור במים".`],
+[0,`מהי התפלה, לפי הטקסט?`,[`הוצאת המלח ממי הים`,`הוספת מלח למים`,`איסוף מי גשם`,`ניקוי מי הכנרת`],`בפסקה השנייה: "התפלה היא תהליך שבו מוציאים את המלח ממי הים".`],
+[0,`מה מבטאות המילים "עם זאת" בפסקה השלישית?`,[`ניגוד – אחרי היתרון באים החסרונות`,`סיבה`,`דוגמה`,`זמן`],`"עם זאת" היא מילת <b>ניגוד</b>: קודם נאמר משהו טוב, ואחריה באים החסרונות.`],
+[0,`אילו שני חסרונות של ההתפלה מוזכרים בטקסט?`,[`צריכת חשמל רבה ופגיעה בבעלי חיים בים`,`טעם רע ומחיר גבוה`,`רעש וריח`,`מעט מים ועבודה איטית`],`בפסקה השלישית: התהליך "דורש כמות גדולה של חשמל", והמים המלוחים "עלולים לפגוע בבעלי החיים".`],
+[0,`מה פירוש המילה "ראויים" בצירוף "מים ראויים לשתייה"?`,[`מתאימים`,`יקרים`,`קרים`,`מלוחים`],`"ראוי" = מתאים, טוב מספיק. מים ראויים לשתייה = מים שאפשר לשתות.`],
+[0,`איזו כותרת אחרת מתאימה לטקסט?`,[`איך הופכים מי ים למי שתייה?`,`חופשה בים התיכון`,`הכנרת מתייבשת`,`דגים בסכנה`],`הטקסט כולו עוסק בהתפלה – הפיכת מי ים למי שתייה.`],
+[1,`מה חושבים הורים רבים, לפי הטקסט?`,[`שבני נוער עצלנים`,`שבני נוער חולים`,`שבני נוער ישנים יותר מדי`,`שהטלפון עוזר להירדם`],`בתחילת הטקסט: הורים רבים בטוחים שבני נוער מתעוררים מאוחר "משום שהם עצלנים".`],
+[1,`מהי הסיבה האמיתית לקושי לקום, לפי המחקרים?`,[`השעון הביולוגי משתנה והמלטונין מופרש מאוחר יותר`,`בני נוער לא אוהבים את בית הספר`,`ארוחת ערב כבדה`,`מזג האוויר`],`"בגיל ההתבגרות משתנה השעון הביולוגי... המוח מתחיל להפריש את הורמון השינה מאוחר יותר".`],
+[1,`המילים "כתוצאה מכך" בפסקה הראשונה מציגות:`,[`תוצאה`,`ניגוד`,`דוגמה`,`תנאי`],`השינוי בשעון הביולוגי (סיבה) ← עייפות מאוחרת וקושי לקום (<b>תוצאה</b>).`],
+[1,`כמה שעות שינה מומלצות לבני נוער?`,[`בין שמונה לעשר שעות`,`חמש עד שש שעות`,`שתים עשרה שעות`,`שבע שעות בדיוק`],`בפסקה השנייה: "בין שמונה לעשר שעות בלילה".`],
+[1,`איזו עצה <u>לא</u> מופיעה בטקסט?`,[`לאכול ארוחה גדולה לפני השינה`,`להניח את הטלפון בצד לפני השינה`,`ללכת לישון בשעה קבועה`,`להימנע מקפאין בערב`],`שלוש העצות האחרות מופיעות בפסקה השלישית. על ארוחה גדולה אין מילה.`],
+[1,`מה אפשר להסיק מהמשפט האחרון בטקסט?`,[`התחלת לימודים מאוחרת יכולה לעזור לתלמידים`,`צריך לבטל את בית הספר`,`תלמידים לא צריכים לישון`,`רק מבוגרים מתקשים לקום`],`התלמידים במקומות שבהם הלימודים מתחילים מאוחר יותר "דיווחו שהם מרוכזים יותר" – כלומר זה עוזר להם.`],
+[2,`כמה זמן עבד נועם על הדגם?`,[`שלושה שבועות`,`שלוש שעות`,`חודש`,`שנה`],`במשפט הראשון: "נועם עבד שלושה שבועות". (וגם – "שבוע" זכר, לכן <b>שלושה</b> שבועות!)`],
+[2,`מה קרה בבוקר התחרות?`,[`נועם מעד והגשר נשבר`,`נועם שכח את הגשר בבית`,`התחרות בוטלה`,`שירה שברה את הגשר`],`בפסקה השנייה: נועם מעד, הקופסה נפלה ואמצע הגשר נשבר.`],
+[2,`איך הרגיש נועם כשראה את הגשר השבור?`,[`עצוב ומאוכזב`,`שמח`,`כועס על שירה`,`אדיש`],`"עיניו התמלאו דמעות" – זה מראה שהוא היה עצוב ומאוכזב.`],
+[2,`איזו תכונה של שירה בולטת בסיפור?`,[`היא עוזרת לחבר במצוקה`,`היא תחרותית ורוצה לנצח`,`היא ביישנית`,`היא מאחרת תמיד`],`שירה ראתה את נועם עצוב והציעה לו עזרה – היא חברה עוזרת.`],
+[2,`מהו המסר של הסיפור?`,[`גם מכישלון אפשר ללמוד ולהשתפר`,`אסור לנסוע באוטובוס`,`תמיד צריך לנצח`,`קיסמים הם חומר חזק`],`נועם אומר: "דווקא מה שנשבר מלמד אותך לבנות טוב יותר".`],
+[2,`המילה "אבל" בפסקה האחרונה מקשרת בין:`,[`"הגשר לא זכה במקום הראשון" לבין "הוא החזק ביותר"`,`"נועם מעד" לבין "הקופסה נפלה"`,`"שירה ראתה אותו" לבין "יש לי דבק"`,`"שלושה שבועות" לבין "הדביק קיסמים"`],`"אבל" יוצרת <b>ניגוד</b>: לא זכה במקום הראשון – אבל היה החזק ביותר.`],
+[2,`מהי הסוגה של הטקסט?`,[`סיפורי`,`מידעי`,`טיעוני`,`הוראות`],`יש דמויות (נועם, שירה), עלילה ומסר – זה טקסט <b>סיפורי</b>.`]
+];
+
+/* ---- Number generator ---- */
+const NOUNS=[
+['ספר','ספרים','m'],['שקל','שקלים','m'],['ילד','ילדים','m'],['חלון','חלונות','m',1],['שולחן','שולחנות','m',1],['שבוע','שבועות','m',1],['יום','ימים','m'],['כדור','כדורים','m'],['מבחן','מבחנים','m'],['קיר','קירות','m',1],['לילה','לילות','m',1],['עיפרון','עפרונות','m',1],['חודש','חודשים','m'],['דף','דפים','m'],['כלב','כלבים','m'],['ארון','ארונות','m',1],
+['מחברת','מחברות','f'],['שנה','שנים','f',1],['מילה','מילים','f',1],['ביצה','ביצים','f',1],['עיר','ערים','f',1],['אבן','אבנים','f',1],['דקה','דקות','f'],['שעה','שעות','f'],['תמונה','תמונות','f'],['ילדה','ילדות','f'],['כיתה','כיתות','f'],['אישה','נשים','f',1],['מכונית','מכוניות','f'],['דלת','דלתות','f'],['יונה','יונים','f',1],['שאלה','שאלות','f']
+];
+const NM=['','אחד','שניים','שלושה','ארבעה','חמישה','שישה','שבעה','שמונה','תשעה','עשרה'];
+const NF=['','אחת','שתיים','שלוש','ארבע','חמש','שש','שבע','שמונה','תשע','עשר'];
+const NMS=['','','שני','שלושת','ארבעת','חמשת','ששת','שבעת','שמונת','תשעת','עשרת'];
+const TM=['','אחד','שנים','שלושה','ארבעה','חמישה','שישה','שבעה','שמונה','תשעה'];
+const TF=['','אחת','שתים','שלוש','ארבע','חמש','שש','שבע','שמונה','תשע'];
+
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function gLine(n){
+  const m=n[2]==='m';
+  let s=m?`"${n[0]}" הוא שם עצם בזכר (${n[0]} אחד)`:`"${n[0]}" היא שם עצם בנקבה (${n[0]} אחת)`;
+  if(n[3]) s+=m?` – גם אם ברבים הוא מסתיים ב־<b>ות</b>!`:` – גם אם ברבים היא מסתיימת ב־<b>ים</b>!`;
+  return s;
+}
+function phrase(n,num,right){ // absolute form 3-10
+  const m=n[2]==='m'; const useM=right?m:!m;
+  return (useM?NM[num]:NF[num])+' '+n[1];
+}
+function genNum(){
+  const t=Math.random();
+  const nounPool=Math.random()<.55?NOUNS.filter(n=>n[3]):NOUNS;
+  const n=pick(nounPool), m=n[2]==='m';
+  if(t<.34){
+    const k=pick([3,4,5,6,7,9,10]);
+    const ok=m?NM[k]:NF[k];
+    return {q:`השלימו את המספר (${k}):<br>___ ${n[1]}`,o:[ok,m?NF[k]:NM[k],NMS[k]],ex:`${gLine(n)}.<br>בזכר המספר מסתיים ב־ה (${NM[k]}), בנקבה – בלי ה (${NF[k]}).<br>לכן: <b>${ok} ${n[1]}</b>.`};
+  }
+  if(t<.52){
+    const k=pick([3,4,5,6,7,9,10]);
+    const ok=m?NMS[k]:NF[k];
+    const ex=m?`${gLine(n)}.<br>כשאחרי המספר בא שם עצם <b>מיודע</b> (עם ה'), בזכר משתמשים בצורת סמיכות: <b>${NMS[k]} ה${n[1]}</b>.`:`${gLine(n)}.<br>בנקבה המספר לא משתנה גם כשבא אחריו ה' הידיעה: <b>${NF[k]} ה${n[1]}</b>.`;
+    return {q:`השלימו את המספר (${k}):<br>___ ה${n[1]}`,o:[ok,...[NMS[k],NM[k],NF[k]].filter(x=>x!==ok)].slice(0,3),ex};
+  }
+  if(t<.70){
+    const u=pick([1,2,3,4,5,6,7,9]);
+    const mf=TM[u]+' עשר', ff=TF[u]+' עשרה', hy=TM[u]+' עשרה';
+    const ok=m?mf:ff;
+    return {q:`השלימו את המספר (${10+u}):<br>___ ${n[1]}`,o:[ok,m?ff:mf,hy],ex:`${gLine(n)}.<br>11–19 בזכר: ${mf}. בנקבה: ${ff}.<br>לכן: <b>${ok} ${n[1]}</b>.`};
+  }
+  if(t<.82){
+    const ok=m?'שני':'שתי';
+    return {q:`השלימו את המספר (2):<br>___ ${n[1]}`,o:[ok,m?'שתי':'שני',m?'שניים':'שתיים'],ex:`${gLine(n)}.<br>לפני שם עצם אומרים <b>שני</b> (זכר) או <b>שתי</b> (נקבה). "שניים/שתיים" רק כשהמספר עומד לבד.<br>לכן: <b>${ok} ${n[1]}</b>.`};
+  }
+  // which phrase is correct
+  const k=()=>pick([3,4,5,6,7,9,10]);
+  const tricky=NOUNS.filter(x=>x[3]);
+  const others=shuffle(NOUNS.filter(x=>x!==n)).slice(0,3);
+  if(Math.random()<.5){
+    const a=k(); const ok=phrase(n,a,true);
+    return {q:`איזה צירוף כתוב <u>נכון</u>?`,o:[ok,...others.map(x=>phrase(x,k(),false))],ex:`${gLine(n)}, ולכן: <b>${ok}</b>.<br>בשאר הצירופים המספר לא מתאים למין של שם העצם.`};
+  }
+  const nn=pick(tricky), a=k(); const bad=phrase(nn,a,false), fix=phrase(nn,a,true);
+  const rest=shuffle(NOUNS.filter(x=>x!==nn)).slice(0,3).map(x=>phrase(x,k(),true));
+  return {q:`באיזה צירוף יש <u>טעות</u>?`,o:[bad,...rest],ex:`${gLine(nn)}.<br>הנכון: <b>${fix}</b>.`};
+}
+
+/* ================= WORLD ================= */
+const W=30,H=61,SURF=6,SEAL=55,BED=60;
+const ZONES=[
+ {name:'שכבת העפר',topic:'conn',tname:'מילות הקישור',top:7,bot:18,base:2,ore:6,oname:'פחם',color:'#3b3b3b'},
+ {name:'מערות האבן',topic:'num',tname:'שם המספר – המספר המונה',top:19,bot:30,base:3,ore:7,oname:'ברזל',color:'#c98a5a'},
+ {name:'המעמקים האפלים',topic:'id',tname:'תעודת הזהות של הטקסט',top:31,bot:42,base:4,ore:8,oname:'זהב',color:'#e2b231'},
+ {name:'ליבת הגבישים',topic:'read',tname:'הבנת הנקרא',top:43,bot:54,base:5,ore:9,oname:'יהלום',color:'#38d6d0'}
+];
+const TOPIC_COL={conn:'#3d7fc4',num:'#c46a3d',id:'#9a6a1a',read:'#1f9a8f',boss:'#7b2fbf'};
+const TOPIC_NAME={conn:'מילות הקישור',num:'שם המספר',id:'תעודת הזהות של הטקסט',read:'הבנת הנקרא'};
+const TOOLS=['מכוש עץ','מכוש אבן','מכוש ברזל','מכוש זהב'];
+const TOOL_COL=['#a0703a','#8f8f8f','#e0e0e0','#f2c94c'];
+const NEED=4, BOSS_NEED=5;
+function zoneAt(y){return y<=18?0:y<=30?1:y<=42?2:3}
+
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+const B={
+ 1:{t:'grass',h:0,pc:['#5aa83a','#7a5634']},2:{t:'dirt',h:0,pc:['#7a5634','#8e6741']},3:{t:'stone',h:1,pc:['#7d7d7d','#999']},
+ 4:{t:'dark',h:2,pc:['#3d4250','#4b5162']},5:{t:'deep',h:3,pc:['#3b2a4d','#54406b']},
+ 6:{t:'coal',h:0,ore:0,pc:['#222','#7a5634']},7:{t:'iron',h:1,ore:1,pc:['#d9a07a','#7d7d7d']},8:{t:'gold',h:2,ore:2,pc:['#f5d142','#3d4250']},9:{t:'diamond',h:3,ore:3,pc:['#5ff3ec','#3b2a4d']},
+ 10:{t:'seal',h:3,seal:1,pc:['#b04fe0','#2a1838']},11:{t:'bedrock',h:99,pc:['#222','#444']},12:{t:'log',h:0,pc:['#6b4a2a','#8a6236']},13:{t:'leaves',h:0,pc:['#3f8f2a','#2f6f1f']}
+};
+
+/* ---------- textures ---------- */
+const TEX={};
+function mk(name,fn){const c=document.createElement('canvas');c.width=c.height=16;const g=c.getContext('2d');fn(g);TEX[name]=c}
+function noise(g,cols,seed){const r=rng(seed);for(let y=0;y<16;y++)for(let x=0;x<16;x++){g.fillStyle=cols[Math.floor(r()*cols.length)];g.fillRect(x,y,1,1)}}
+function ore(g,c1,c2,seed){const r=rng(seed);for(let i=0;i<5;i++){const x=1+Math.floor(r()*12),y=1+Math.floor(r()*12);g.fillStyle=c1;g.fillRect(x,y,3,2);g.fillRect(x+1,y-1,1,1);g.fillStyle=c2;g.fillRect(x,y,1,1)}}
+function buildTextures(){
+ const dirt=['#7a5634','#86603a','#6d4c2d','#8e6741','#5f4127'];
+ const stone=['#7d7d7d','#888','#727272','#959595','#6a6a6a'];
+ const dark=['#3d4250','#454b5a','#363a47','#4b5162','#30343f'];
+ const deep=['#3b2a4d','#43305a','#33243f','#4a3863','#2c2038'];
+ mk('dirt',g=>noise(g,dirt,11));
+ mk('grass',g=>{noise(g,dirt,12);const r=rng(5);for(let x=0;x<16;x++){const d=3+Math.floor(r()*2);for(let y=0;y<d;y++){g.fillStyle=r()<.5?'#5aa83a':'#69b947';g.fillRect(x,y,1,1)}}});
+ mk('stone',g=>noise(g,stone,13));
+ mk('dark',g=>noise(g,dark,14));
+ mk('deep',g=>noise(g,deep,15));
+ mk('coal',g=>{noise(g,dirt,16);ore(g,'#1d1d1d','#444',3)});
+ mk('iron',g=>{noise(g,stone,17);ore(g,'#d9a07a','#f3c9a8',4)});
+ mk('gold',g=>{noise(g,dark,18);ore(g,'#f5d142','#fff3a8',6)});
+ mk('diamond',g=>{noise(g,deep,19);ore(g,'#3fe0d8','#c8fffb',8)});
+ mk('seal',g=>{noise(g,['#2a1838','#311c42','#24142f'],20);g.fillStyle='#b04fe0';[[3,3],[12,3],[3,12],[12,12],[7,7],[8,8],[7,8],[8,7],[5,5],[10,10],[5,10],[10,5]].forEach(p=>g.fillRect(p[0],p[1],1,1));g.strokeStyle='#7a2fa8';g.strokeRect(1.5,1.5,13,13)});
+ mk('bedrock',g=>noise(g,['#1a1a1a','#333','#262626','#4a4a4a','#111'],21));
+ mk('log',g=>{noise(g,['#6b4a2a','#7a5632','#5c3f23'],22);g.fillStyle='#4a321b';for(let x=2;x<16;x+=4)g.fillRect(x,0,1,16)});
+ mk('leaves',g=>{noise(g,['#3f8f2a','#2f6f1f','#4fa336','#2a5e1b'],23);const r=rng(9);for(let i=0;i<14;i++){g.clearRect(Math.floor(r()*16),Math.floor(r()*16),1,1)}});
+ ['dirt','stone','dark','deep'].forEach(n=>{const c=document.createElement('canvas');c.width=c.height=16;const g=c.getContext('2d');g.drawImage(TEX[n],0,0);g.fillStyle='rgba(0,0,0,.6)';g.fillRect(0,0,16,16);TEX['bg_'+n]=c});
+}
+
+const PLAYER=[
+"..YYYY..",
+".YYYYLY.",
+".YYYYYY.",
+".SSSSSS.",
+".SESSES.",
+".SSSSSS.",
+"..OOOO..",
+".SOOOOS.",
+".SOOOOS.",
+"..OOOO..",
+"..O..O..",
+".KK..KK."];
+const PCOL={Y:'#f2c418',L:'#fffbe0',S:'#e8b48a',E:'#2a1a10',O:'#e8772e',K:'#5a3a1e'};
+const BOSS=[
+"WWWWWWWWWWWC..",
+"WLLLLLLLLLWCC.",
+"WWWWWWWWWWWWCC",
+"WKKWWWWWWWKKWW",
+"WWKKWWWWWKKWWW",
+"WWRRWWWWWRRWWW",
+"WWRRWWWWWRRWWW",
+"WWWWWWWWWWWWWW",
+"WWKKKKKKKKKKWW",
+"WWKTKTKTKTKKWW",
+"WWKKKKKKKKKKWW",
+"WLLLLLLLLLLLLW",
+"WWWWWWWWWWWWWW",
+"WLLLLLLLWRWWRW",
+"WWWWWWWWWWRRWW",
+"WWWWWWWWWRWWRW"];
+const BCOL={W:'#f4f1e8',L:'#9fb5d6',K:'#1a1a1a',R:'#e0312b',T:'#ffffff',C:'#cfc9b8'};
+const PICK=[
+"..HHHH..",
+".H...HH.",
+".....WH.",
+"....W.H.",
+"...W..H.",
+"..W.....",
+".W......",
+"W......."];
+function drawPix(g,map,cols,x,y,s,flip){for(let r=0;r<map.length;r++)for(let c=0;c<map[r].length;c++){const ch=map[r][c];if(ch==='.'||!cols[ch])continue;g.fillStyle=cols[ch];const cx=flip?(map[r].length-1-c):c;g.fillRect(x+cx*s,y+r*s,Math.ceil(s),Math.ceil(s))}}
+function pickCanvas(tier,size=16){const c=document.createElement('canvas');c.width=c.height=size;const g=c.getContext('2d');drawPix(g,PICK,{H:TOOL_COL[tier],W:'#7a5634'},0,0,size/8);return c}
+
+/* ================= STATE ================= */
+let S=null;
+const SAVE_KEY='mikhre-halashon-v1';
+function newState(){
+ const seed=(Date.now()&0xffffff)||7;
+ return {grid:Array.from(genWorld(seed)),px:15,py:SURF-1,face:1,inv:[0,0,0,0],tier:0,
+  stats:{conn:{c:0,w:0},num:{c:0,w:0},id:{c:0,w:0},read:{c:0,w:0}},mistakes:[],queues:{},seen:[false,false,false,false],
+  xp:0,streak:0,best:0,bossWins:0,muted:false};
+}
+function genWorld(seed){
+ const r=rng(seed);const g=new Uint8Array(W*H);
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+  let id=0;
+  if(y<SURF)id=0;else if(y===SURF)id=1;
+  else if(y<SEAL){const z=zoneAt(y);id=ZONES[z].base;if(z>0&&y===ZONES[z].top&&r()<.4)id=ZONES[z-1].base;if(z<3&&y===ZONES[z].bot&&r()<.25)id=ZONES[z+1].base}
+  else if(y===SEAL)id=10;else if(y<BED)id=0;else id=11;
+  if(y>SURF&&y<=SEAL&&(x===0||x===W-1))id=11;
+  if(y>SEAL&&y<BED&&(x<=1||x>=W-2))id=11;
+  g[y*W+x]=id;
+ }
+ for(let z=0;z<4;z++){const Z=ZONES[z];for(let i=0;i<3;i++){const cx=3+Math.floor(r()*(W-6)),cy=Z.top+2+Math.floor(r()*(Z.bot-Z.top-4));const rx=2+Math.floor(r()*2),ry=1;
+  for(let dy=-ry;dy<=ry;dy++)for(let dx=-rx;dx<=rx;dx++){const x=cx+dx,y=cy+dy;if(x>0&&x<W-1&&y>SURF+2&&y<SEAL&&(dx*dx)/(rx*rx)+(dy*dy)/(ry*ry+.5)<=1)g[y*W+x]=0}}}
+ for(let z=0;z<4;z++)placeOres(g,z,16,r);
+ for(const tx of [3,8,22,26]){
+  for(let y=SURF-3;y<SURF;y++)g[y*W+tx]=12;
+  for(let y=SURF-5;y<=SURF-4;y++)for(let dx=-2;dx<=2;dx++)if(!g[y*W+tx+dx])g[y*W+tx+dx]=13;
+  for(let dx=-1;dx<=1;dx++)g[(SURF-6>=0?SURF-6:0)*W+tx+dx]=13;
+ }
+ return g;
+}
+function placeOres(g,z,n,r){const Z=ZONES[z];r=r||Math.random;let placed=0,tries=0;
+ while(placed<n&&tries<2000){tries++;const x=1+Math.floor(r()*(W-2)),y=Z.top+1+Math.floor(r()*(Z.bot-Z.top));const i=y*W+x;
+  if(g[i]===Z.base&&!(z===0&&Math.abs(x-15)<2&&y<SURF+3)){g[i]=Z.ore;placed++}}}
+function ensureOres(z){const Z=ZONES[z];let c=0;for(let y=Z.top;y<=Z.bot;y++)for(let x=0;x<W;x++)if(S.grid[y*W+x]===Z.ore)c++;if(c<5)placeOres(S.grid,z,6)}
+
+function get(x,y){if(x<0||x>=W||y<0)return 0;if(y>=H)return 11;return S.grid[y*W+x]}
+function set(x,y,v){S.grid[y*W+x]=v}
+function solid(x,y){if(x<0||x>=W)return true;return get(x,y)!==0}
+
+function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
+let saveT=0;function saveSoon(){clearTimeout(saveT);saveT=setTimeout(save,400)}
+function load(){try{const s=localStorage.getItem(SAVE_KEY);if(!s)return null;const o=JSON.parse(s);if(!o||!o.grid||o.grid.length!==W*H)return null;return o}catch(e){return null}}
+
+/* ================= QUESTIONS ================= */
+function bankFor(t){return t==='conn'?CONN:t==='id'?IDQ:t==='read'?READQ:NUM_STATIC}
+function buildQueue(t){
+ const bank=bankFor(t);
+ if(t==='read'){const order=shuffle([0,1,2]);const q=[];order.forEach(p=>READQ.forEach((x,i)=>{if(x[0]===p)q.push(i)}));return q}
+ if(t==='id'){const order=shuffle([0,1,2,3]);const q=[];order.forEach(p=>IDQ.forEach((x,i)=>{if(x[0]===p)q.push(i)}));const gen=shuffle(IDQ.map((x,i)=>x[0]<0?i:-1).filter(i=>i>=0));gen.forEach((g,k)=>q.splice(Math.min(q.length,3+k*4),0,g));return q}
+ return shuffle(bank.map((_,i)=>i));
+}
+function nextQ(t){
+ if(t==='num'&&Math.random()<.72){const g=genNum();return {topic:'num',key:null,q:g.q,ans:g.o[0],opts:shuffle(g.o),ex:g.ex,doc:null}}
+ const qk=t==='num'?'numS':t;
+ if(!S.queues[qk]||!S.queues[qk].length)S.queues[qk]=buildQueue(t);
+ const i=S.queues[qk].shift();const bank=bankFor(t);const it=bank[i];
+ if(t==='read')return {topic:t,key:i,q:it[1],ans:it[2][0],opts:shuffle(it[2]),ex:it[3],doc:PASSAGES[it[0]]};
+ if(t==='id')return {topic:t,key:i,q:it[1],ans:it[2][0],opts:shuffle(it[2]),ex:it[3],doc:it[0]>=0?CARDS[it[0]]:null};
+ return {topic:t,key:i,q:it[0],ans:it[1][0],opts:shuffle(it[1]),ex:it[2],doc:null};
+}
+function requeue(q){if(q.key===null)return;const qk=q.topic==='num'?'numS':q.topic;const a=S.queues[qk]||(S.queues[qk]=[]);a.splice(Math.min(a.length,2),0,q.key)}
+function docHTML(d){return `<div class="doc"><div class="doc-t">${d.title}</div><div class="doc-by">מאת: ${d.author} · מתוך: ${d.source} · ${d.date}</div>${d.paras.map(p=>`<p>${p}</p>`).join('')}</div>`}
+function strip(h){const d=document.createElement('div');d.innerHTML=h;return d.textContent}
+
+/* ================= UI ================= */
+const $=id=>document.getElementById(id);
+const overlay=$('overlay'),panel=$('panel');
+let modal=false;
+function openPanel(html){panel.innerHTML=html;overlay.classList.remove('hidden');panel.scrollTop=0;modal=true;held.clear();document.querySelectorAll('#pad button').forEach(b=>b.classList.remove('on'))}
+function closePanel(){overlay.classList.add('hidden');modal=false;panel.innerHTML=''}
+let toastT=0;
+function toast(msg,ms=2600){const t=$('toast');t.innerHTML=msg;t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',ms)}
+let banT=0;
+function banner(a,b){$('ban1').textContent=a;$('ban2').textContent=b;const e=$('banner');e.classList.add('show');clearTimeout(banT);banT=setTimeout(()=>e.classList.remove('show'),2600)}
+
+function ask(q,cb,boss){
+ const chip=boss?`<span class="chip" style="background:${TOPIC_COL.boss}">⚔️ קרב – ${TOPIC_NAME[q.topic]}</span>`:`<span class="chip" style="background:${TOPIC_COL[q.topic]}">${TOPIC_NAME[q.topic]}</span>`;
+ openPanel(`${boss?bossBarHTML():''}${chip}${q.doc?docHTML(q.doc):''}<div class="qtext">${q.q}</div><div class="opts">${q.opts.map((o,i)=>`<button class="opt" data-i="${i}">${o}</button>`).join('')}</div><div id="fbx"></div>`);
+ if(boss)drawBossIcon();
+ panel.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+  const chosen=q.opts[+b.dataset.i];const ok=chosen===q.ans;
+  panel.querySelectorAll('.opt').forEach(x=>{x.disabled=true;if(q.opts[+x.dataset.i]===q.ans)x.classList.add('ok')});
+  if(!ok)b.classList.add('bad');
+  const st=S.stats[q.topic];
+  if(ok){st.c++;S.streak++;S.best=Math.max(S.best,S.streak);S.xp+=10+Math.min(S.streak,10)*2;SFX.correct()}
+  recAnswer({t:Date.now(),k:q.topic,boss:boss||undefined,q:strip(q.q)+(q.doc?` [${q.doc.title}]`:''),a:strip(chosen),c:strip(q.ans),ok});
+  if(!ok){st.w++;S.streak=0;SFX.wrong();requeue(q);S.mistakes.unshift({t:q.topic,q:strip(q.q),a:strip(q.ans),c:strip(chosen)});S.mistakes=S.mistakes.slice(0,40)}
+  const head=ok?pick(['כל הכבוד! ✔','מעולה! ✔','בול! ✔','נכון! ✔']):'לא נכון ✘';
+  $('fbx').innerHTML=`<div class="fb ${ok?'ok':'bad'}"><b>${head}</b><br>${q.ex}</div><button class="btn" id="cont">${ok?'המשך ⛏️':'הבנתי, ממשיכים'}</button>`;
+  updateHUD();save();
+  const c=$('cont');c.focus();c.onclick=()=>{closePanel();cb(ok)};
+  $('fbx').scrollIntoView({block:'nearest'});
+ });
+}
+
+/* ---- HUD ---- */
+function updateHUD(){
+ const z=ZONES[zoneAt(Math.max(S.py,SURF+1))];
+ $('zoneTag').innerHTML=S.py>SEAL?`זירת המבחן<small>⚔️ הקרב האחרון</small>`:`${z.name}<small>נושא: ${z.tname}</small>`;
+ const inv=$('inv');inv.innerHTML='';
+ const tool=document.createElement('div');tool.className='slot tool';tool.title=TOOLS[S.tier];tool.appendChild(pickCanvas(S.tier,32));inv.appendChild(tool);
+ ZONES.forEach((Z,i)=>{const s=document.createElement('div');s.className='slot';s.title=Z.oname;const c=document.createElement('canvas');c.width=c.height=16;c.getContext('2d').drawImage(TEX[B[Z.ore].t],0,0);s.appendChild(c);const b=document.createElement('b');b.textContent=S.inv[i];s.appendChild(b);inv.appendChild(s)});
+ $('xpv').textContent=S.xp;$('stv').textContent=S.streak;
+ $('bMute').textContent=S.muted?'🔇':'🔊';
+}
+
+/* ---- Craft ---- */
+function openCraft(){
+ let h=`<h2>🛠️ שולחן מלאכה</h2><div class="small">כל מכוש חדש מאפשר לחצוב שכבה עמוקה יותר. עונים נכון על שאלות → אוספים עפרות → בונים מכוש.</div><br>`;
+ for(let t=1;t<4;t++){
+  const have=S.inv[t-1],ore=ZONES[t-1].oname;const done=S.tier>=t;const can=!done&&S.tier===t-1&&have>=NEED;
+  h+=`<div class="recipe"><canvas data-t="${t}" width="16" height="16"></canvas><div class="r-txt"><b>${TOOLS[t]}</b><br>דרוש: ${NEED} ${ore} (יש לך ${have}) · פותח את "${ZONES[t].name}"</div>${done?'<span>✔ יש לך</span>':`<button class="btn" style="margin:0" data-craft="${t}" ${can?'':'disabled'}>בנה</button>`}</div>`;
+ }
+ const dOk=S.inv[3]>=BOSS_NEED;
+ h+=`<div class="recipe"><canvas data-boss="1" width="16" height="16"></canvas><div class="r-txt"><b>מפתח החותם</b><br>אספו ${BOSS_NEED} יהלומים (יש לך ${S.inv[3]}) ואז חצבו את החותם הסגול בתחתית העולם.</div><span>${dOk?'✔ מוכן!':'🔒'}</span></div>`;
+ h+=`<button class="btn gray" id="cls">סגור</button>`;
+ openPanel(h);
+ panel.querySelectorAll('canvas[data-t]').forEach(c=>{const g=c.getContext('2d');drawPix(g,PICK,{H:TOOL_COL[+c.dataset.t],W:'#7a5634'},0,0,2)});
+ panel.querySelectorAll('canvas[data-boss]').forEach(c=>c.getContext('2d').drawImage(TEX.seal,0,0));
+ panel.querySelectorAll('[data-craft]').forEach(b=>b.onclick=()=>{const t=+b.dataset.craft;S.inv[t-1]-=NEED;S.tier=t;SFX.craft();updateHUD();save();closePanel();banner(`נבנה: ${TOOLS[t]}!`,`עכשיו אפשר לחצוב את "${ZONES[t].name}"`)});
+ $('cls').onclick=closePanel;
+}
+
+/* ---- Stats ---- */
+function openStats(){
+ let h=`<h2>📊 ההתקדמות שלי</h2><div class="small">⭐ ניקוד: ${S.xp} · 🔥 רצף שיא: ${S.best} · ⚔️ ניצחונות על המבחן הנוראי: ${S.bossWins}</div>${S.bossWins?'<button class="btn" id="cert" style="margin-top:6px">🏆 התעודה שלי</button>':''}<h3>הצלחה לפי נושא</h3>`;
+ ['conn','num','id','read'].forEach(t=>{const s=S.stats[t],n=s.c+s.w,p=n?Math.round(s.c*100/n):0;
+  h+=`<div class="statrow"><span class="nm">${TOPIC_NAME[t]}</span><div class="bar"><i style="width:${p}%"></i></div><span style="width:110px">${n?`${p}% (${s.c}/${n})`:'עוד לא תרגלת'}</span></div>`});
+ h+=`<h3>טעויות אחרונות – כדאי לחזור עליהן</h3>`;
+ if(!S.mistakes.length)h+=`<div class="small">אין טעויות עדיין 🎉</div>`;
+ S.mistakes.slice(0,12).forEach(m=>{h+=`<div class="mist"><b>${TOPIC_NAME[m.t]}:</b> ${m.q}<br>נבחר: ${m.c} · <span class="a">נכון: ${m.a}</span></div>`});
+ h+=`<button class="btn gray" id="cls">סגור</button> <button class="btn gray" id="reset" style="background:#9a3b33">משחק חדש</button>`;
+ openPanel(h);$('cls').onclick=closePanel;if($('cert'))$('cert').onclick=()=>openCertificate(false);
+ $('reset').onclick=()=>{openPanel(`<h2>להתחיל משחק חדש?</h2><div class="small">העולם, הפריטים והסטטיסטיקה יימחקו.</div><button class="btn" id="y" style="background:#9a3b33">כן, להתחיל מחדש</button> <button class="btn gray" id="n">ביטול</button>`);$('y').onclick=()=>{S=newState();save();closePanel();updateHUD();rx=S.px;ry=S.py;showStart()};$('n').onclick=openStats};
+}
+
+/* ---- Cheat sheets ---- */
+const SHEETS={
+conn:`<h3>מילות הקישור – לפי סוג הקשר</h3><table class="cs"><tr><th>קשר</th><th>מילים</th></tr>
+<tr><td>הוספה</td><td>ו־, וגם, בנוסף, כמו כן, לא רק... אלא גם</td></tr>
+<tr><td>ניגוד</td><td>אבל, אך, אולם, לעומת זאת, ואילו, עם זאת</td></tr>
+<tr><td>ויתור</td><td>למרות ש־, אף על פי ש־, אף כי</td></tr>
+<tr><td>סיבה</td><td>כי, מפני ש־, משום ש־, בגלל, היות ש־</td></tr>
+<tr><td>תוצאה</td><td>לכן, לפיכך, על כן, כתוצאה מכך</td></tr>
+<tr><td>תכלית (מטרה)</td><td>כדי, כדי ש־, על מנת, בשביל</td></tr>
+<tr><td>זמן</td><td>כאשר, כש־, לאחר מכן, בזמן ש־, ברגע ש־</td></tr>
+<tr><td>תנאי</td><td>אם, אילו, במקרה ש־, אלא אם כן</td></tr>
+<tr><td>דוגמה</td><td>למשל, כגון, לדוגמה</td></tr>
+<tr><td>הסבר</td><td>כלומר, דהיינו</td></tr>
+<tr><td>סיכום</td><td>לסיכום, לבסוף, בקיצור</td></tr></table>
+<ul class="cs"><li><b>טריק:</b> מחליפים את המילה במילה אחרת מאותה שורה. אם המשמעות נשמרת – זיהיתם נכון.</li><li>סיבה מול תוצאה: אחרי "כי" באה <b>הסיבה</b>; אחרי "לכן" באה <b>התוצאה</b>.</li></ul>`,
+num:`<h3>שם המספר – המספר המונה</h3><ul class="cs">
+<li><b>כלל הזהב:</b> בודקים את המין של שם העצם <b>ביחיד</b>: "ספר אחד" ← זכר, "שנה אחת" ← נקבה.</li>
+<li><b>3–10:</b> זכר – <b>עם ה'</b>: שלושה ספרים, חמישה ימים. נקבה – <b>בלי ה'</b>: שלוש מחברות, חמש דקות.</li>
+<li><b>1–2:</b> ספר אחד / מחברת אחת. שני ספרים / שתי מחברות. (בספירה לבד: שניים / שתיים.)</li>
+<li><b>11–19:</b> זכר: אחד עשר, שנים עשר, שלושה עשר... נקבה: אחת עשרה, שתים עשרה, שלוש עשרה...</li>
+<li><b>עם ה' הידיעה:</b> בזכר – צורת סמיכות: שלושת הספרים, חמשת הימים, עשרת הילדים. בנקבה – בלי שינוי: שלוש השנים, חמש הדקות.</li>
+<li><b>עשרות</b> (עשרים, שלושים...) – אותו דבר בזכר ובנקבה.</li>
+<li><b>מאות ואלפים:</b> מאה, מאתיים, שלוש מאות. אלף, אלפיים, שלושת אלפים.</li>
+<li>⚠️ <b>מלכודות:</b> שנים, מילים, ביצים, ערים, אבנים, נשים, יונים – <b>נקבה</b>! חלונות, שולחנות, קירות, לילות, עפרונות, ארונות – <b>זכר</b>!</li></ul>`,
+id:`<h3>תעודת הזהות של הטקסט</h3><ul class="cs">
+<li><b>כותרת</b> – שם הטקסט.</li><li><b>כותב</b> – מי כתב ("מאת").</li><li><b>מקור</b> – איפה פורסם: עיתון, מגזין, ספר, אתר.</li><li><b>תאריך</b> – מתי פורסם (האם המידע עדכני?).</li>
+<li><b>סוגה</b> – איזה סוג טקסט:<br>· <b>מידעי</b> – מוסר מידע ועובדות.<br>· <b>טיעוני</b> – מביע עמדה ונימוקים ("לדעתי"), כדי לשכנע.<br>· <b>סיפורי</b> – דמויות ועלילה, כדי לבדר או להעביר מסר.<br>· <b>הוראות</b> – שלבים ורשימות, כדי להדריך.</li>
+<li><b>קהל יעד</b> – למי הטקסט מיועד (לפי המקור, הנושא והשפה).</li><li><b>מטרה</b> – למה נכתב: למסור מידע / לשכנע / לבדר / להדריך.</li></ul>`,
+read:`<h3>הבנת הנקרא – איך לגשת לטקסט</h3><ul class="cs">
+<li>קוראים קודם את <b>הכותרת ואת תעודת הזהות</b> – כבר משם מבינים הרבה.</li>
+<li>קוראים את השאלה, ואז <b>חוזרים לטקסט</b> ומחפשים את המקום שבו נמצאת התשובה.</li>
+<li>שאלה על <b>מילה</b>? קוראים את כל המשפט שבו היא נמצאת ומנחשים לפי ההקשר.</li>
+<li>שאלת <b>הסקה</b>? התשובה לא כתובה במפורש – מחברים בין פרטים בטקסט.</li>
+<li>שאלת "<b>מה לא</b> מופיע"? בודקים כל תשובה מול הטקסט ופוסלים.</li>
+<li>שימו לב ל<b>מילות הקישור</b> – הן מגלות את מבנה הטקסט (ניגוד, סיבה, תוצאה).</li></ul>`
+};
+function openHelp(tab){
+ tab=tab||'how';
+ const tabs=[['how','איך משחקים'],['conn','מילות קישור'],['num','שם המספר'],['id','תעודת זהות'],['read','הבנת הנקרא']];
+ let body=tab==='how'?`<h3>איך משחקים</h3><ul class="cs">
+ <li><b>חיצים / WASD</b> – זזים ימינה ושמאלה. כשנתקלים בבלוק – חוצבים אותו.</li>
+ <li><b>▲ / רווח</b> – קפיצה (או חציבה למעלה). <b>▼</b> – חציבה למטה.</li>
+ <li>בטלפון: הכפתורים בפינה, או לוחצים על בלוק שצמוד לדמות.</li>
+ <li>כל <b>עפרה</b> (בלוק עם נקודות צבעוניות) פותחת שאלה. תשובה נכונה = העפרה שלך. תשובה שגויה = העפרה הופכת לאבן, והשאלה תחזור אחר כך.</li>
+ <li>אוספים ${NEED} עפרות ← בונים מכוש חדש ב־🛠️ ← יורדים לשכבה הבאה.</li>
+ <li>כל שכבה = נושא אחר במבחן. בתחתית ישן <b>המבחן הנוראי</b> – צריך ${BOSS_NEED} יהלומים כדי לפתוח את החותם הסגול.</li>
+ <li>🏆 <b>איך מנצחים:</b> פוגעים במבחן הנוראי 8 פעמים (8 תשובות נכונות) לפני שנגמרים 3 הלבבות. המנצחים מקבלים תעודת הצטיינות לשליחה!</li>
+ <li>📊 מראה את ההתקדמות ואת הטעויות שכדאי לחזור עליהן.</li></ul>`:SHEETS[tab];
+ openPanel(`<h2>📜 מגילות ידע</h2><div class="tabs">${tabs.map(t=>`<button class="tab ${t[0]===tab?'on':''}" data-tab="${t[0]}">${t[1]}</button>`).join('')}</div>${body}<button class="btn gray" id="cls">סגור</button>`);
+ panel.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>openHelp(b.dataset.tab));
+ $('cls').onclick=closePanel;
+}
+function zoneIntro(z){
+ if(modal){setTimeout(()=>zoneIntro(z),800);return}
+ const Z=ZONES[z];
+ openPanel(`<h2>${Z.name}</h2><span class="chip" style="background:${TOPIC_COL[Z.topic]}">הנושא בשכבה: ${Z.tname}</span><div class="small">מצאת מגילת ידע! קרא אותה – היא תעזור לך עם השאלות בשכבה הזו. אפשר לפתוח אותה שוב בכל רגע בכפתור 📜.</div>${SHEETS[Z.topic]}<button class="btn" id="cls">יאללה, לחצוב! ⛏️</button>`);
+ $('cls').onclick=closePanel;
+}
+
+/* ---- Boss ---- */
+let boss=null;
+const BOSS_NAME='המבחן הנוראי';
+function bossBarHTML(){return `<div class="bossbar"><canvas id="bossIcon" width="16" height="16"></canvas><div class="hp"><b>${BOSS_NAME}</b><div class="bar"><i style="width:${boss.hp*100/boss.max}%"></i></div></div><div class="hearts">${'❤️'.repeat(boss.hearts)}${'🖤'.repeat(3-boss.hearts)}</div></div>`}
+function drawBossIcon(){const c=$('bossIcon');if(!c)return;const g=c.getContext('2d');g.clearRect(0,0,16,16);drawPix(g,BOSS,BCOL,1,0,1)}
+function startBoss(){
+ boss={hp:8,max:8,hearts:3,order:shuffle(['conn','conn','num','num','num','id','id','read','read','conn','num','id'])};
+ openPanel(`<h2>⚔️ ${BOSS_NAME} התעורר!</h2><div class="bossbar"><canvas id="bossIcon" width="16" height="16"></canvas><div class="small" style="color:#fff">${BOSS_NAME} שואל שאלות מכל הנושאים. כל תשובה נכונה פוגעת בו (צריך 8 פגיעות). כל טעות עולה לך לב אחד (יש לך 3). מוכן?</div></div><button class="btn" id="go">להילחם!</button>`);
+ drawBossIcon();SFX.hit();
+ $('go').onclick=()=>{closePanel();bossRound()};
+}
+function bossRound(){
+ const t=boss.order.length?boss.order.shift():pick(['conn','num','id','read']);
+ ask(nextQ(t),ok=>{
+  if(ok){boss.hp--;SFX.hit()}else boss.hearts--;
+  if(boss.hp<=0)return bossWin();
+  if(boss.hearts<=0)return bossLose();
+  bossRound();
+ },true);
+}
+function bossLose(){
+ recBattle({t:Date.now(),res:'lose'});
+ openPanel(`<h2>${BOSS_NAME} ניצח הפעם…</h2><div class="small">לא נורא! חזור על מגילות הידע (📜) ועל הטעויות (📊), ונסה שוב. היהלומים נשארים אצלך.</div><button class="btn" id="again">לנסות שוב</button> <button class="btn gray" id="cls">אחר כך</button>`);
+ $('again').onclick=()=>{closePanel();startBoss()};$('cls').onclick=closePanel;boss=null;
+}
+function bossWin(){
+ boss=null;S.bossWins++;S.xp+=200;S.wonAt=Date.now();save();updateHUD();recBattle({t:Date.now(),res:'win',acc:totals().p});
+ // celebration in the world: the test explodes into paper scraps
+ celebrating=true;const bx=W/2,by=BED-2;
+ for(let i=0;i<70;i++)parts.push({x:bx,y:by,vx:(Math.random()-.5)*14,vy:-Math.random()*10-2,life:1.5+Math.random(),c:pick(['#f4f1e8','#e0312b','#9fb5d6','#fff']),s:.15+Math.random()*.15});
+ SFX.hit();setTimeout(()=>SFX.win(),250);
+ banner(`🎉 ניצחת את ${BOSS_NAME}! 🎉`,'הכנו לך תעודה…');
+ let n=0;const fw=setInterval(()=>{confetti(VW*(.2+Math.random()*.6),VH*(.15+Math.random()*.35));beep(800+Math.random()*600,.18,'triangle',.05,200);if(++n>=6)clearInterval(fw)},420);
+ setTimeout(()=>{celebrating=false;openCertificate(true)},3000);
+}
+let celebrating=false;
+
+/* ---- Certificate ---- */
+function topicPct(t){const s=S.stats[t],n=s.c+s.w;return n?Math.round(s.c*100/n):0}
+function totals(){let tot=0,cor=0;Object.values(S.stats).forEach(s=>{tot+=s.c+s.w;cor+=s.c});return {tot,cor,p:tot?Math.round(cor*100/tot):0}}
+function gradeWord(p){return p>=90?'בהצטיינות יתרה':p>=80?'בהצטיינות':p>=65?'בהצלחה רבה':'בהצלחה'}
+function drawCertificate(){
+ const c=document.createElement('canvas');c.width=1200;c.height=860;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+ const tiles=['grass','coal','dirt','iron','stone','gold','dark','diamond','deep'];const ts=40;let k=0;
+ for(let x=0;x<c.width;x+=ts){g.drawImage(TEX[tiles[k++%tiles.length]],x,0,ts,ts);g.drawImage(TEX[tiles[k++%tiles.length]],x,c.height-ts,ts,ts)}
+ for(let y=ts;y<c.height-ts;y+=ts){g.drawImage(TEX[tiles[k++%tiles.length]],0,y,ts,ts);g.drawImage(TEX[tiles[k++%tiles.length]],c.width-ts,y,ts,ts)}
+ g.fillStyle='#1b1b1f';g.fillRect(ts,ts,c.width-2*ts,c.height-2*ts);
+ g.fillStyle='#fbf3dc';g.fillRect(ts+8,ts+8,c.width-2*ts-16,c.height-2*ts-16);
+ g.strokeStyle='#c9a94a';g.lineWidth=4;g.strokeRect(ts+22,ts+22,c.width-2*ts-44,c.height-2*ts-44);
+ const name=(S.name||'').trim()||'השחקן האמיץ';
+ const t=totals();
+ g.direction='rtl';g.textAlign='center';g.textBaseline='alphabetic';const cx=c.width/2;
+ g.fillStyle='#7a5a12';g.font='900 30px Rubik';g.fillText('⛏️  חפירות  ⛏️',cx,130);
+ g.fillStyle='#2a2418';g.font='900 74px Rubik';g.fillText('תעודת הצטיינות',cx,215);
+ g.font='500 30px Rubik';g.fillStyle='#4a3f2a';g.fillText('מוענקת בזאת ל־',cx,275);
+ g.font='900 64px Rubik';g.fillStyle='#b8321f';g.fillText(name,cx,350);
+ g.fillStyle='#c9a94a';g.fillRect(cx-260,368,520,4);
+ g.font='500 30px Rubik';g.fillStyle='#2a2418';
+ g.fillText(`על ניצחון ${gradeWord(t.p)} על "${BOSS_NAME}"`,cx,420);
+ g.fillText('ועל שליטה בכל נושאי המבחן בלשון:',cx,462);
+ const rows=[['conn','מילות הקישור'],['num','שם המספר – המספר המונה'],['id','תעודת הזהות של הטקסט'],['read','הבנת הנקרא']];
+ g.font='700 27px Rubik';
+ rows.forEach((r,i)=>{const col=i%2,row=Math.floor(i/2);const x=col===0?cx+250:cx-250,y=520+row*48;g.fillStyle='#3f9b3a';g.fillText(`✔ ${r[1]} – ${topicPct(r[0])}%`,x,y)});
+ g.font='500 25px Rubik';g.fillStyle='#4a3f2a';
+ g.fillText(`${t.cor} תשובות נכונות מתוך ${t.tot}  ·  דיוק ${t.p}%  ·  ${S.xp} נקודות  ·  רצף שיא ${S.best}`,cx,645);
+ const d=new Date(S.wonAt||Date.now());
+ g.font='500 24px Rubik';g.fillText(`תאריך: ${d.toLocaleDateString('he-IL')}`,cx+320,730);
+ g.fillText('חתימה: מנהל המכרה',cx-320,730);
+ g.strokeStyle='#4a3f2a';g.lineWidth=2;g.beginPath();g.moveTo(cx-440,742);g.lineTo(cx-200,742);g.stroke();
+ // player with pickaxe & defeated test
+ drawPix(g,PLAYER,PCOL,cx-40,660,7);drawPix(g,PICK,{H:TOOL_COL[S.tier],W:'#7a5634'},cx+10,690,5);
+ // gold seal
+ g.save();g.translate(c.width-200,180);g.fillStyle='#e2b231';g.beginPath();for(let i=0;i<24;i++){const a=i*Math.PI/12,r=i%2?62:72;g.lineTo(Math.cos(a)*r,Math.sin(a)*r)}g.fill();g.fillStyle='#f5d142';g.beginPath();g.arc(0,0,52,0,7);g.fill();g.fillStyle='#7a5a12';g.font='900 26px Rubik';g.fillText('ניצחון',0,0);g.font='700 18px Rubik';g.fillText('⛏️',0,26);g.restore();
+ g.save();g.translate(140,150);drawPix(g,BOSS,BCOL,0,0,6);g.strokeStyle='#e0312b';g.lineWidth=10;g.beginPath();g.moveTo(-6,-6);g.lineTo(96,102);g.moveTo(96,-6);g.lineTo(-6,102);g.stroke();g.restore();
+ return c;
+}
+function shareText(){const t=totals();const name=(S.name||'').trim()||'השחקן האמיץ';
+ return `🏆 ${name} – ניצחון על "${BOSS_NAME}" במשחק חפירות! ⛏️\n✔ מילות הקישור ${topicPct('conn')}%\n✔ שם המספר ${topicPct('num')}%\n✔ תעודת הזהות של הטקסט ${topicPct('id')}%\n✔ הבנת הנקרא ${topicPct('read')}%\nדיוק כללי ${t.p}% · ⭐ ${S.xp} נקודות`}
+function openCertificate(fresh){
+ openPanel(`${fresh?'<div class="title">🏆 ניצחת!</div><div class="sub">המבחן הנוראי הובס! הנה התעודה שלך:</div>':'<h2>🏆 התעודה שלי</h2>'}
+ <img id="certImg" alt="תעודת הצטיינות" style="width:100%;display:block;border:3px solid #000;user-select:auto;-webkit-user-select:auto;-webkit-touch-callout:default">
+ <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><label for="nm" style="font-weight:700">השם בתעודה:</label><input id="nm" maxlength="24" value="${(S.name||'').replace(/"/g,'&quot;')}" placeholder="כתוב כאן את השם" style="font-family:inherit;font-size:18px;padding:6px 10px;border:3px solid #000;flex:1;min-width:160px"></div>
+ <div class="center"><a class="btn" id="wa" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;background:#25a35a">📲 שליחה בוואטסאפ</a> <button class="btn gray" id="cpImg">🖼️ העתק תמונה</button> <button class="btn gray" id="cpTxt">📋 העתק טקסט</button></div>
+ <div class="small center" style="margin-top:6px">לשמירת התעודה: לחיצה ארוכה על התמונה (בטלפון) או קליק ימני ← "שמירת תמונה" (במחשב). אחר כך אפשר לצרף אותה להודעה.</div>
+ <div class="center"><button class="btn" id="cls">להמשיך לחפור ⛏️</button> <button class="btn gray" id="st">📊 סטטיסטיקה</button></div>`);
+ let cert=null;
+ const render=()=>{cert=drawCertificate();$('certImg').src=cert.toDataURL('image/png');$('wa').href='https://wa.me/?text='+encodeURIComponent(shareText())};
+ const ready=document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve();ready.then(render);render();
+ let nt=0;$('nm').oninput=e=>{const v=e.target.value.trim();if(v)S.name=v;clearTimeout(nt);nt=setTimeout(()=>{render();save();touchSession()},400)};
+ $('cpTxt').onclick=()=>{try{navigator.clipboard.writeText(shareText()).then(()=>toast('הטקסט הועתק! אפשר להדביק בהודעה 📋'),()=>toast('לא הצלחתי להעתיק – אפשר לשלוח דרך כפתור הוואטסאפ'))}catch(e){toast('לא הצלחתי להעתיק – אפשר לשלוח דרך כפתור הוואטסאפ')}};
+ $('cpImg').onclick=()=>{try{cert.toBlob(b=>{navigator.clipboard.write([new ClipboardItem({'image/png':b})]).then(()=>toast('התעודה הועתקה! אפשר להדביק אותה בוואטסאפ 🖼️'),()=>toast('הדפדפן לא מאפשר להעתיק תמונה – שמרו אותה בלחיצה ארוכה / קליק ימני'))})}catch(e){toast('הדפדפן לא מאפשר להעתיק תמונה – שמרו אותה בלחיצה ארוכה / קליק ימני')}};
+ $('cls').onclick=closePanel;$('st').onclick=openStats;
+}
+
+/* ---- Start ---- */
+function showStart(){
+ const has=S.xp>0||S.inv.some(x=>x>0)||S.tier>0;
+ openPanel(`<canvas id="startArt" width="96" height="40" style="width:100%;max-width:420px;display:block;margin:0 auto;image-rendering:pixelated"></canvas><div class="title">⛏️ חפירות</div><div class="sub">חופרים לעומק האדמה – ועונים על שאלות לשון בדרך</div>
+ <ul class="cs"><li>🟫 <b>שכבת העפר</b> – מילות הקישור</li><li>⬜ <b>מערות האבן</b> – שם המספר</li><li>⬛ <b>המעמקים האפלים</b> – תעודת הזהות של הטקסט</li><li>🟪 <b>ליבת הגבישים</b> – הבנת הנקרא</li><li>⚔️ ובסוף – <b>המבחן הנוראי</b>. מי שמנצח מקבל 🏆 תעודת הצטיינות!</li></ul>
+ <div class="center" style="margin-top:8px"><label for="nameIn" style="font-weight:700;display:block;margin-bottom:4px">איך קוראים לך?</label><input id="nameIn" maxlength="16" autocomplete="off" placeholder="השם שלך" value="${esc(S.name||'')}"></div>
+ <div class="center"><button class="btn" id="go">${has?'להמשיך לשחק':'להתחיל!'}</button> <button class="btn gray" id="how">איך משחקים?</button></div>`);
+ const c=$('startArt'),g=c.getContext('2d');g.imageSmoothingEnabled=false;
+ for(let x=0;x<6;x++){g.drawImage(TEX.grass,x*16,24);}g.fillStyle='#8fd3ff';g.fillRect(0,0,96,24);
+ drawPix(g,PLAYER,PCOL,30,12,1);drawPix(g,PICK,{H:TOOL_COL[0],W:'#7a5634'},38,14,1);
+ g.drawImage(TEX.coal,56,24);g.drawImage(TEX.iron,72,24);
+ drawPix(g,BOSS,BCOL,74,4,1.2);
+ const goNow=()=>{const n=$('nameIn'),v=n.value.trim();if(!v){n.classList.add('err');n.placeholder='צריך לכתוב שם 🙂';n.focus();SFX.wrong();return}S.name=v;save();touchSession();closePanel();audioInit();if(!S.seen[0])toast('חצבו למטה עם ▼ כדי להתחיל! ⛏️',3500)};
+ $('go').onclick=goNow;$('nameIn').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();goNow()}};
+ $('how').onclick=()=>openHelp('how');
+}
+
+
+/* ================= SESSION LOG + CLOUD (Firebase, like ZaviTale) ================= */
+const FIREBASE_CONFIG={apiKey:"AIzaSyDK2xEKqsi3PGfTWXQjVzlT_krxb5i8M3M",authDomain:"zavitale.firebaseapp.com",projectId:"zavitale",storageBucket:"zavitale.firebasestorage.app",messagingSenderId:"845240579650",appId:"1:845240579650:web:5b7862e14c1db9af649fdb"};
+const COLL='hafirot_sessions';
+const LOGKEY='hafirot_log_v1';
+let log={sessions:{}};try{const v=JSON.parse(localStorage.getItem(LOGKEY)||'null');if(v&&v.sessions)log=v}catch(e){}
+function newSession(){return{id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),game:'hafirot',player:'',start:Date.now(),last:Date.now(),answers:[],battles:[],tier:0,diamonds:0,bossWins:0,ver:1}}
+let session=newSession();
+function touchSession(){session.player=(S&&S.name)||'';session.tier=S.tier;session.diamonds=S.inv[3];session.bossWins=S.bossWins;session.last=Date.now();log.sessions[session.id]=session;
+ const ids=Object.keys(log.sessions);if(ids.length>60){ids.sort((a,b)=>log.sessions[a].start-log.sessions[b].start).slice(0,ids.length-60).forEach(i=>delete log.sessions[i])}
+ try{localStorage.setItem(LOGKEY,JSON.stringify(log))}catch(e){}syncSoon()}
+function recAnswer(a){if(session.answers.length>=700)session=newSession();session.answers.push(a);touchSession()}
+function recBattle(b){session.battles.push(b);touchSession()}
+let db=null,backend='none',fbAuth=null;const cloud={state:'checking',writable:true,inflight:false,dirty:false,timer:null};
+function loadScript(src){return new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=rej;document.head.appendChild(el)})}
+async function initFirebase(){
+ const BU='https://www.gstatic.com/firebasejs/10.12.2/';
+ await loadScript(BU+'firebase-app-compat.js');await loadScript(BU+'firebase-auth-compat.js');await loadScript(BU+'firebase-firestore-compat.js');
+ firebase.initializeApp(FIREBASE_CONFIG);fbAuth=firebase.auth();
+ await new Promise(r=>{const u=fbAuth.onAuthStateChanged(()=>{u();r()})});
+ if(!fbAuth.currentUser)await fbAuth.signInAnonymously();
+ return firebase.firestore();
+}
+async function initCloud(){
+ try{const inClaude=/claude\.ai|claudeusercontent|anthropic/.test(location.hostname)||location.protocol==='file:';
+  if(!inClaude){db=await Promise.race([initFirebase(),new Promise((_,rej)=>setTimeout(()=>rej('timeout'),12000))]);backend='firebase'}
+ }catch(e){db=null;backend='none'}
+ cloud.state=db?'on':'off';if(db&&session.answers.length)syncSoon();
+ if(location.hash==='#parents'&&$('parent').classList.contains('on'))openParent();
+}
+function syncSoon(){if(!db||!cloud.writable)return;clearTimeout(cloud.timer);cloud.timer=setTimeout(syncNow,1500)}
+async function syncNow(){
+ if(!db||!cloud.writable)return;
+ if(!session.answers.length&&!session.battles.length)return;
+ if(cloud.inflight){cloud.dirty=true;return}
+ cloud.inflight=true;
+ try{if(backend==='firebase'){if(!fbAuth.currentUser)await fbAuth.signInAnonymously();session.uid=fbAuth.currentUser.uid}
+  await db.collection(COLL).doc(session.id).set(JSON.parse(JSON.stringify(session)));cloud.state='on';cloud.lastSync=Date.now()}
+ catch(e){const c=e&&e.code;if(c==='unavailable'||c==='resource-exhausted'||c==='deadline-exceeded'){setTimeout(syncSoon,3000+Math.random()*3000)}else{cloud.writable=false;cloud.state='readonly'}}
+ finally{cloud.inflight=false;if(cloud.dirty){cloud.dirty=false;syncSoon()}}
+}
+addEventListener('pagehide',()=>{if(db&&cloud.writable)syncNow()});
+
+/* ================= PARENT DASHBOARD (#parents) ================= */
+const TOPIC_ORDER=['conn','num','id','read'];
+let parentData=null,pAll={sessions:[],src:'local'},pPlayer='';
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtD=t=>new Date(t).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
+const fmtDT=t=>new Date(t).toLocaleString('he-IL',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+function pctCol(p){return p>=80?'#36c36b':p>=60?'#e0b030':'#e05050'}
+const pname=s=>(String(s.player||'').trim()||'ללא שם');
+async function openParent(){
+ closePanel();$('parent').classList.add('on');renderParent(Object.values(log.sessions),'local');
+ if(backend==='firebase'){const u=fbAuth.currentUser;if(!u||u.isAnonymous){renderParent(Object.values(log.sessions),'login');return}}
+ if(db){
+  renderParent(Object.values(log.sessions),'loading');
+  let done=false;const timer=setTimeout(()=>{if(!done)renderParent(Object.values(log.sessions),'timeout')},10000);
+  try{const snap=await db.collection(COLL).orderBy('last','desc').limit(400).get();done=true;clearTimeout(timer);
+   const m={};Object.values(log.sessions).forEach(s=>m[s.id]=s);snap.docs.forEach(d=>{const v=d.data();if(v&&v.id){if(!m[v.id]||(v.answers||[]).length>(m[v.id].answers||[]).length)m[v.id]=v}});
+   renderParent(Object.values(m),'cloud');
+  }catch(e){done=true;clearTimeout(timer);renderParent(Object.values(log.sessions),e&&e.code==='permission-denied'?'denied':'error')}
+ }
+}
+function closeParent(){$('parent').classList.remove('on');if(location.hash==='#parents'){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}}if(!S.name)showStart()}
+function route(){if(location.hash==='#parents')openParent();else if($('parent').classList.contains('on'))$('parent').classList.remove('on')}
+addEventListener('hashchange',route);
+function renderParent(sessions,src){
+ pAll={sessions,src};
+ const allS=sessions.filter(s=>s&&Array.isArray(s.answers)).sort((a,b)=>b.start-a.start);
+ const PL={};allS.forEach(s=>{const n=pname(s);const p=PL[n]||(PL[n]={name:n,n:0,c:0,last:0,ms:0,wins:0,tier:0,per:{}});
+  s.answers.forEach(a=>{p.n++;if(a.ok)p.c++;const t=p.per[a.k]||(p.per[a.k]={n:0,c:0});t.n++;if(a.ok)t.c++});
+  p.last=Math.max(p.last,s.last||s.start);p.ms+=Math.min(3*3600e3,Math.max(0,(s.last||s.start)-s.start));
+  p.wins+=(s.battles||[]).filter(b=>b.res==='win').length;p.tier=Math.max(p.tier,s.tier||0)});
+ const players=Object.values(PL).sort((a,b)=>b.last-a.last);
+ if(pPlayer&&!PL[pPlayer])pPlayer='';
+ sessions=pPlayer?allS.filter(s=>pname(s)===pPlayer):allS;
+ const ans=[];sessions.forEach(s=>s.answers.forEach(a=>ans.push({...a,player:pname(s)})));ans.sort((a,b)=>a.t-b.t);
+ const battles=[];sessions.forEach(s=>(s.battles||[]).forEach(b=>battles.push(b)));
+ const total=ans.length,corr=ans.filter(a=>a.ok).length,pc=total?Math.round(corr/total*100):0;
+ const mins=Math.round(sessions.reduce((m,s)=>m+Math.min(3*3600e3,Math.max(0,(s.last||s.start)-s.start)),0)/60000);
+ const wins=battles.filter(b=>b.res==='win').length,tries=battles.length;
+ const per={};TOPIC_ORDER.forEach(k=>per[k]={n:0,c:0,last:0,recent:[]});
+ ans.forEach(a=>{const p=per[a.k];if(!p)return;p.n++;if(a.ok)p.c++;p.last=Math.max(p.last,a.t);p.recent.push(a.ok)});
+ const weak=TOPIC_ORDER.filter(k=>per[k].n>=4&&per[k].c/per[k].n<0.7);
+ const none=TOPIC_ORDER.filter(k=>per[k].n===0);
+ const strong=TOPIC_ORDER.filter(k=>per[k].n>=6&&per[k].c/per[k].n>=0.85);
+ const days=[];const d0=new Date();d0.setHours(0,0,0,0);
+ for(let i=13;i>=0;i--){const s=d0.getTime()-i*864e5;const e=s+864e5;const da=ans.filter(a=>a.t>=s&&a.t<e);days.push({s,n:da.length,c:da.filter(a=>a.ok).length})}
+ const maxN=Math.max(5,...days.map(d=>d.n));
+ const mistakes=ans.filter(a=>!a.ok).slice(-25).reverse();
+ const who=backend==='firebase'&&fbAuth&&fbAuth.currentUser&&!fbAuth.currentUser.isAnonymous?esc(fbAuth.currentUser.email):'';
+ const srcChip={login:'<span class="chip">💾 מוצגים רק נתוני המכשיר הזה</span> <button class="pbtn" id="pLogin">🔐 התחברות עם Google כדי לראות את כל התלמידים</button>',
+  denied:`<span class="chip">⛔ החשבון ${who} לא מורשה לצפות בנתוני התלמידים</span> <button class="pbtn" id="pLogout">התנתקות</button>`,
+  cloud:`<span class="chip ok">☁️ מסונכרן – נתונים מכל המכשירים</span>${who?` <span class="chip">מחובר: ${who}</span> <button class="pbtn" id="pLogout">התנתקות</button>`:''}`,
+  loading:'<span class="chip">⏳ טוען נתונים מהענן…</span>',timeout:'<span class="chip">⌛ הענן לא עונה – מוצגים נתוני המכשיר הזה</span>',error:'<span class="chip">⚠️ שגיאה בטעינה מהענן – מוצגים נתוני המכשיר הזה</span>',
+  local:'<span class="chip">💾 נתוני המכשיר הזה</span>'}[src]||'';
+ const writeNote=backend==='firebase'?'':'<div class="note">הסנכרון לענן פועל כשהמשחק פתוח מהקישור של GitHub Pages. כאן מוצגים רק נתוני הדפדפן הזה.</div>';
+ parentData={total,pc,mins,per,weak,none,mistakes,sessions,wins,player:pPlayer};
+ const selP=pPlayer?PL[pPlayer]:null;
+ $('pw').innerHTML=`
+ <div class="ptop"><h1>👪 לוח מעקב <span class="tag">⛏️ חפירות</span></h1><span class="sp"></span><button class="pbtn" id="pRefresh">רענן</button><button class="pbtn" id="pCopy">העתק סיכום</button><button class="pbtn" id="pClose">חזרה למשחק ✕</button></div>
+ <div>${srcChip}</div>${writeNote}
+ <h2>תלמידים (${players.length})</h2>
+ ${players.length?`<div class="ptw"><table class="pt plist"><tr><th>שם</th><th>שאלות</th><th>הצלחה</th><th>דקות</th><th>מכוש</th><th>ניצחונות על המבחן</th><th>כדאי לחזק</th><th>תרגול אחרון</th><th></th></tr>${players.map(p=>{const pc=p.n?Math.round(p.c/p.n*100):0;const wk=TOPIC_ORDER.filter(k=>p.per[k]&&p.per[k].n>=4&&p.per[k].c/p.per[k].n<0.7).map(k=>TOPIC_NAME[k]);
+  return `<tr class="${p.name===pPlayer?'psel':''}"><td><b>${esc(p.name)}</b></td><td>${p.n}</td><td>${p.n?`<b style="color:${pctCol(pc)}">${pc}%</b>`:'—'}</td><td>${Math.round(p.ms/60000)}</td><td>${TOOLS[p.tier]}</td><td>${p.wins?'🏆 '+p.wins:'—'}</td><td class="muted">${wk.join(', ')||'—'}</td><td class="muted">${fmtD(p.last)}</td><td><button class="pbtn pick" data-p="${esc(p.name)}">${p.name===pPlayer?'מוצג ✓':'הצג'}</button></td></tr>`}).join('')}</table></div>`:'<div class="muted">עוד אף אחד לא שיחק.</div>'}
+ <div class="pview"><span>מציג נתונים של:</span><select id="pSel"><option value="">כל התלמידים</option>${players.map(p=>`<option value="${esc(p.name)}" ${p.name===pPlayer?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
+ <textarea id="copyArea" readonly></textarea>
+ <div class="cards">
+  <div class="card"><b>${total}</b><span>שאלות שנענו</span></div>
+  <div class="card"><b style="color:${total?pctCol(pc):'#fff'}">${total?pc+'%':'—'}</b><span>תשובות נכונות</span></div>
+  <div class="card"><b>${mins}</b><span>דקות תרגול</span></div>
+  <div class="card"><b>${wins} / ${tries}</b><span>ניצחונות על המבחן הנוראי / ניסיונות</span></div>
+  ${selP?`<div class="card"><b style="font-size:20px">${TOOLS[selP.tier]}</b><span>המכוש הכי מתקדם</span></div>`:`<div class="card"><b>${players.length}</b><span>תלמידים</span></div>`}
+  <div class="card"><b>${sessions.length?fmtD(sessions[0].last||sessions[0].start):'—'}</b><span>תרגול אחרון</span></div>
+ </div>
+ <div class="rec">${total?`
+  ${weak.length?`<div>🔴 <b>כדאי לחזק:</b> ${weak.map(k=>TOPIC_NAME[k]).join(', ')}</div>`:''}
+  ${strong.length?`<div>🟢 <b>שולט היטב:</b> ${strong.map(k=>TOPIC_NAME[k]).join(', ')}</div>`:''}
+  ${none.length?`<div>⚪ <b>עוד לא תורגל:</b> ${none.map(k=>TOPIC_NAME[k]).join(', ')}</div>`:''}
+  ${!weak.length&&!none.length?'<div>👏 כל הנושאים תורגלו ואין נושא חלש במיוחד. מומלץ להילחם שוב ב"מבחן הנוראי" לחזרה כללית.</div>':''}`:'<div>עוד אין נתונים. ברגע שמישהו יתחיל לשחק, ההתקדמות תופיע כאן.</div>'}
+ </div>
+ <h2>לפי נושא</h2>
+ <div class="ptw"><table class="pt"><tr><th>נושא</th><th>שאלות</th><th>נכונות</th><th style="width:34%">הצלחה</th><th>10 אחרונות</th><th>תורגל לאחרונה</th></tr>
+ ${TOPIC_ORDER.map(k=>{const p=per[k];const pp=p.n?Math.round(p.c/p.n*100):0;const r10=p.recent.slice(-10);const rp=r10.length?Math.round(r10.filter(Boolean).length/r10.length*100):0;
+  return `<tr><td><b>${TOPIC_NAME[k]}</b></td><td>${p.n}</td><td>${p.c}</td><td>${p.n?`<div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="flex:1"><i style="width:${pp}%;background:${pctCol(pp)}"></i></div><b style="color:${pctCol(pp)}">${pp}%</b></div>`:'<span class="muted">—</span>'}</td><td>${r10.length?`<span style="color:${pctCol(rp)}">${rp}%</span>`:'<span class="muted">—</span>'}</td><td class="muted">${p.last?fmtD(p.last):'—'}</td></tr>`}).join('')}
+ </table></div>
+ <h2>14 הימים האחרונים</h2>
+ <div class="days">${days.map(d=>`<div class="day"><span class="n">${d.n||''}</span><div class="col" style="height:${d.n/maxN*100}%"><i style="height:${d.n?d.c/d.n*100:0}%"></i></div><span>${fmtD(d.s)}</span></div>`).join('')}</div>
+ <div class="legend"><i style="background:#2d6cdf"></i>שאלות <i style="background:#36c36b"></i>מתוכן נכונות</div>
+ <h2>טעויות אחרונות</h2>
+ ${mistakes.length?`<div class="ptw"><table class="pt"><tr><th>מתי</th><th>שחקן</th><th>נושא</th><th>שאלה</th><th>ענה</th><th>נכון</th></tr>${mistakes.map(a=>`<tr><td class="muted">${fmtDT(a.t)}</td><td><b>${esc(a.player)}</b></td><td>${TOPIC_NAME[a.k]||a.k}${a.boss?' <span class="muted">(מבחן נוראי)</span>':''}</td><td>${esc(a.q)}</td><td>${esc(a.a)}</td><td>${esc(a.c)}</td></tr>`).join('')}</table></div>`:'<div class="muted">אין טעויות להצגה.</div>'}
+ <h2>מפגשי משחק</h2>
+ ${sessions.length?`<div class="ptw"><table class="pt"><tr><th>התחלה</th><th>שחקן</th><th>משך</th><th>שאלות</th><th>הצלחה</th><th>מכוש</th><th>קרבות</th></tr>${sessions.slice(0,40).map(s=>{const n=s.answers.length,c=s.answers.filter(a=>a.ok).length;const bw=(s.battles||[]).filter(b=>b.res==='win').length,bl=(s.battles||[]).filter(b=>b.res==='lose').length;return `<tr><td>${fmtDT(s.start)}</td><td><b>${esc(pname(s))}</b></td><td>${Math.max(1,Math.round(((s.last||s.start)-s.start)/60000))} ד׳</td><td>${n}</td><td>${n?`<span style="color:${pctCol(c/n*100)}">${Math.round(c/n*100)}%</span>`:'—'}</td><td class="muted">${TOOLS[s.tier||0]}</td><td class="muted">${bw||bl?`🏆${bw} · ✘${bl}`:'—'}</td></tr>`}).join('')}</table></div>`:'<div class="muted">אין מפגשים.</div>'}
+ `;
+ $('pClose').onclick=closeParent;$('pRefresh').onclick=openParent;
+ if($('pLogin'))$('pLogin').onclick=async()=>{try{await fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider());openParent()}catch(e){toast('ההתחברות לא הצליחה')}};
+ if($('pLogout'))$('pLogout').onclick=async()=>{try{await fbAuth.signOut();await fbAuth.signInAnonymously()}catch(e){}openParent()};
+ $('pSel').onchange=e=>{pPlayer=e.target.value;renderParent(pAll.sessions,pAll.src)};
+ document.querySelectorAll('.pick').forEach(b=>b.onclick=()=>{pPlayer=b.dataset.p===pPlayer?'':b.dataset.p;renderParent(pAll.sessions,pAll.src);$('pSel').scrollIntoView({behavior:'smooth',block:'start'})});
+ $('pCopy').onclick=()=>{const tx=summaryText();const ta=$('copyArea');ta.value=tx;ta.style.display='block';
+  try{navigator.clipboard.writeText(tx).then(()=>{$('pCopy').textContent='הועתק ✓'},()=>{ta.select()})}catch(e){ta.select()}};
+}
+function summaryText(){
+ const d=parentData;if(!d)return'';
+ let t=`סיכום תרגול – חפירות (לשון)${d.player?` – ${d.player}`:''}\n${d.total} שאלות · ${d.pc}% נכונות · ${d.mins} דקות · ${d.wins} ניצחונות על המבחן הנוראי\n\n`;
+ TOPIC_ORDER.forEach(k=>{const p=d.per[k];t+=`${TOPIC_NAME[k]}: ${p.n?Math.round(p.c/p.n*100)+'% ('+p.c+'/'+p.n+')':'לא תורגל'}\n`});
+ if(d.weak.length)t+=`\nכדאי לחזק: ${d.weak.map(k=>TOPIC_NAME[k]).join(', ')}\n`;
+ if(d.mistakes.length){t+=`\nטעויות אחרונות:\n`;d.mistakes.slice(0,10).forEach(a=>t+=`• ${a.q} → ענה: ${a.a} | נכון: ${a.c}\n`)}
+ return t;
+}
+
+/* ================= AUDIO ================= */
+let AC=null;
+function audioInit(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
+function beep(f,d,type,vol,slide,delay){if(S&&S.muted)return;try{audioInit();if(!AC)return;const t0=AC.currentTime+(delay||0);const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t0);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t0+d);g.gain.setValueAtTime(vol||.06,t0);g.gain.exponentialRampToValueAtTime(.001,t0+d);o.connect(g);g.connect(AC.destination);o.start(t0);o.stop(t0+d+.02)}catch(e){}}
+const SFX={
+ mine(){beep(160,.07,'square',.05,70)},
+ step(){beep(90,.03,'triangle',.03)},
+ correct(){beep(523,.1,'square',.06,0,0);beep(659,.1,'square',.06,0,.09);beep(784,.18,'square',.06,0,.18)},
+ wrong(){beep(220,.28,'sawtooth',.05,90)},
+ craft(){[392,523,659,784,1046].forEach((f,i)=>beep(f,.12,'triangle',.07,0,i*.07))},
+ hit(){beep(110,.2,'square',.09,50)},
+ deny(){beep(120,.1,'square',.05,0);beep(100,.12,'square',.05,0,.1)},
+ win(){[523,659,784,1046,784,1046,1318].forEach((f,i)=>beep(f,.16,'square',.06,0,i*.12))}
+};
+
+/* ================= GAME LOOP ================= */
+const cv=$('game'),ctx=cv.getContext('2d');
+let T=40,VW=0,VH=0,DPR=1;
+function resize(){DPR=Math.min(window.devicePixelRatio||1,2);VW=innerWidth;VH=innerHeight;cv.width=VW*DPR;cv.height=VH*DPR;T=Math.max(32,Math.min(54,Math.floor(Math.min(VW/14,VH/11))));ctx.setTransform(DPR,0,0,DPR,0,0);ctx.imageSmoothingEnabled=false}
+addEventListener('resize',resize);
+
+let rx=15,ry=SURF-1,airUntil=0,lastFall=0,swing=0,shake=0;
+let parts=[],floats=[],clouds=[];
+const held=new Set();let lastAct=0,lastKey='';
+
+function act(k){
+ if(modal)return;
+ const now=performance.now();
+ if(k==='L'||k==='R'){
+  const dx=k==='L'?-1:1;S.face=dx;const tx=S.px+dx;
+  if(!solid(tx,S.py)){S.px=tx;SFX.step();if(S.py>SURF)saveSoon()}
+  else mine(tx,S.py);
+ }else if(k==='U'){
+  if(solid(S.px,S.py-1)){if(S.py-1>=0)mine(S.px,S.py-1)}
+  else if(solid(S.px,S.py+1)){S.py-=1;airUntil=now+380}
+ }else if(k==='D'){
+  if(solid(S.px,S.py+1))mine(S.px,S.py+1);
+ }
+}
+function mine(x,y){
+ const id=get(x,y);if(!id)return;const b=B[id];swing=1;
+ if(id===11){toast('זה סלע יסוד – אי אפשר לחצוב אותו.');SFX.deny();shake=6;return}
+ if(b.seal){
+  if(S.inv[3]>=BOSS_NEED){startBoss()}else{toast(`🔒 החותם נפתח רק עם ${BOSS_NEED} יהלומים (יש לך ${S.inv[3]}).`);SFX.deny();shake=6}
+  return;
+ }
+ if(b.h>S.tier){
+  const need=b.h;toast(`הבלוק קשה מדי ל${TOOLS[S.tier]}!<br>צריך <b>${TOOLS[need]}</b> – אסוף ${NEED} ${ZONES[need-1].oname} ובנה אותו ב־🛠️`,3400);SFX.deny();shake=6;return;
+ }
+ if(b.ore!==undefined){
+  const z=b.ore;const Z=ZONES[z];
+  ask(nextQ(Z.topic),ok=>{
+   if(ok){set(x,y,0);S.inv[z]++;burst(x,y,b.pc,18);floats.push({x:x+.5,y:y,txt:`+1 ${Z.oname}`,life:1.4,col:Z.color});
+    if(S.inv[z]===NEED&&S.tier===z&&z<3)setTimeout(()=>toast(`יש לך ${NEED} ${Z.oname}! לחץ על 🛠️ כדי לבנות ${TOOLS[z+1]}`,3800),300);
+    if(z===3&&S.inv[3]===BOSS_NEED)setTimeout(()=>toast(`💎 יש לך ${BOSS_NEED} יהלומים! רדו לחותם הסגול בתחתית.`,3800),300);
+   }else{set(x,y,Z.base);burst(x,y,['#999','#555'],8)}
+   ensureOres(z);updateHUD();save();
+  });
+  return;
+ }
+ set(x,y,0);burst(x,y,b.pc,10);SFX.mine();saveSoon();
+}
+function burst(x,y,cols,n){for(let i=0;i<n;i++)parts.push({x:x+.5,y:y+.5,vx:(Math.random()-.5)*5,vy:-Math.random()*4-1,life:.6+Math.random()*.4,c:cols[i%cols.length],s:.1+Math.random()*.1})}
+
+function physics(now){
+ if(modal)return;
+ if(now>airUntil&&!solid(S.px,S.py+1)&&S.py<H-1){
+  if(now-lastFall>75){S.py++;lastFall=now;saveSoon()}
+ }
+ // zone entry
+ const zk=S.py>SEAL?4:zoneAt(Math.max(S.py,SURF+1));if(zk!==lastZone){lastZone=zk;updateHUD()}
+ if(S.py>=SURF){const z=zoneAt(S.py);if(S.py<=SEAL&&!S.seen[z]){S.seen[z]=true;save();banner(ZONES[z].name,`נושא: ${ZONES[z].tname}`);setTimeout(()=>zoneIntro(z),700)}}
+}
+let lastZone=-1;
+function input(now){
+ if(modal||!held.size)return;
+ const k=[...held].pop();
+ if(k!==lastKey||now-lastAct>=150){act(k);lastAct=now;lastKey=k}
+}
+
+let prev=performance.now();
+function frame(now){
+ const dt=Math.min(.05,(now-prev)/1000);prev=now;
+ input(now);physics(now);
+ rx+=(S.px-rx)*Math.min(1,dt*16);ry+=(S.py-ry)*Math.min(1,dt*16);
+ if(Math.abs(S.px-rx)>6)rx=S.px;if(Math.abs(S.py-ry)>6)ry=S.py;
+ swing=Math.max(0,swing-dt*5);shake=Math.max(0,shake-dt*40);
+ parts.forEach(p=>{p.vy+=12*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt});parts=parts.filter(p=>p.life>0);
+ floats.forEach(f=>{f.y-=dt*1.2;f.life-=dt});floats=floats.filter(f=>f.life>0);
+ confParts.forEach(p=>{p.vy+=200*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.r+=p.vr*dt;p.life-=dt});confParts=confParts.filter(p=>p.life>0);
+ draw(now);
+ requestAnimationFrame(frame);
+}
+
+function draw(now){
+ const cw=VW,ch=VH;
+ let camX=rx*T+T/2-cw/2, camY=ry*T+T/2-ch/2+T*.5;
+ camX=Math.max(0,Math.min(W*T-cw,camX));if(W*T<cw)camX=(W*T-cw)/2;
+ camY=Math.max(-T*3,Math.min(H*T-ch,camY));
+ if(shake){camX+=(Math.random()-.5)*shake;camY+=(Math.random()-.5)*shake}
+ // sky
+ const sky=ctx.createLinearGradient(0,0,0,ch);sky.addColorStop(0,'#6cc4ff');sky.addColorStop(1,'#b8e4ff');ctx.fillStyle=sky;ctx.fillRect(0,0,cw,ch);
+ // sun & clouds
+ const sunY=-camY*.3+20;if(sunY>-80){ctx.fillStyle='#fff6a0';ctx.fillRect(cw*.18,sunY,46,46);ctx.fillStyle='#ffe85a';ctx.fillRect(cw*.18+8,sunY+8,30,30)}
+ clouds.forEach(c=>{c.x+=c.v;if(c.x>W*T+200)c.x=-200;const sx=c.x-camX*.6,sy=c.y*T-camY;ctx.fillStyle='rgba(255,255,255,.92)';ctx.fillRect(sx,sy,c.w*T*.5,T*.5);ctx.fillRect(sx+T*.5,sy-T*.25,c.w*T*.3,T*.3)});
+ const x0=Math.max(0,Math.floor(camX/T)),x1=Math.min(W-1,Math.ceil((camX+cw)/T)),y0=Math.max(0,Math.floor(camY/T)),y1=Math.min(H-1,Math.ceil((camY+ch)/T));
+ // area outside world horizontally
+ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+  const id=S.grid[y*W+x];const sx=Math.round(x*T-camX),sy=Math.round(y*T-camY);
+  if(id){ctx.drawImage(TEX[B[id].t],sx,sy,T,T)}
+  else if(y>SURF){const bg=y>SEAL?'bg_deep':'bg_'+B[ZONES[zoneAt(y)].base].t;ctx.drawImage(TEX[bg],sx,sy,T,T)}
+ }
+ // seal glow
+ if(SEAL>=y0&&SEAL<=y1){ctx.fillStyle=`rgba(200,110,255,${.12+.1*Math.sin(now/300)})`;ctx.fillRect(-camX,SEAL*T-camY,W*T,T)}
+ // boss sleeping in cave
+ const bx=(W/2-1)*T-camX,by=(BED-2)*T-camY;
+ if(by<ch+T*3&&by>-T*3&&!celebrating){const bob=S.bossWins?0:Math.sin(now/600)*2,sc=T*2.2/16,bx0=bx-T*.5,by0=by-T*.9+bob;drawPix(ctx,BOSS,BCOL,bx0,by0,sc);if(S.bossWins===0){ctx.fillStyle='#fff';ctx.font=`700 ${Math.round(T*.4)}px Rubik`;ctx.fillText('Zz',bx+T*1.8,by-T*.8+bob)}else{ctx.strokeStyle='#e0312b';ctx.lineWidth=T*.18;ctx.beginPath();ctx.moveTo(bx0,by0);ctx.lineTo(bx0+14*sc,by0+16*sc);ctx.moveTo(bx0+14*sc,by0);ctx.lineTo(bx0,by0+16*sc);ctx.stroke()}}
+ // player
+ const pxs=rx*T-camX,pys=ry*T-camY;const s=T/12;
+ const flip=S.face<0;
+ drawPix(ctx,PLAYER,PCOL,pxs+(T-8*s)/2,pys,s,flip);
+ ctx.save();const hx=pxs+T/2+(flip?-1:1)*T*.32,hy=pys+T*.62;ctx.translate(hx,hy);ctx.scale(flip?-1:1,1);ctx.rotate(-.6+swing*1.6);drawPix(ctx,PICK,{H:TOOL_COL[S.tier],W:'#7a5634'},-T*.1,-T*.45,T*.06);ctx.restore();
+ // particles
+ parts.forEach(p=>{ctx.fillStyle=p.c;ctx.globalAlpha=Math.min(1,p.life*2);ctx.fillRect(p.x*T-camX,p.y*T-camY,p.s*T,p.s*T)});ctx.globalAlpha=1;
+ // darkness
+ const depth=ry<=SURF+1?0:ry<19?.25:ry<31?.45:ry<43?.62:.72;
+ if(depth>0){const lx=pxs+T/2,ly=pys+T/2,R=T*(4.5-depth*1.5);
+  const gr=ctx.createRadialGradient(lx,ly,R*.25,lx,ly,R);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,`rgba(0,0,8,${depth})`);ctx.fillStyle=gr;ctx.fillRect(0,0,cw,ch)}
+ // floats
+ floats.forEach(f=>{ctx.globalAlpha=Math.min(1,f.life);ctx.font=`900 ${Math.round(T*.42)}px Rubik`;ctx.textAlign='center';ctx.fillStyle='#000';ctx.fillText(f.txt,f.x*T-camX+2,f.y*T-camY+2);ctx.fillStyle=f.col==='#3b3b3b'?'#fff':f.col;ctx.fillText(f.txt,f.x*T-camX,f.y*T-camY)});ctx.globalAlpha=1;ctx.textAlign='start';
+ // confetti
+ confParts.forEach(p=>{ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.fillRect(-4,-2,8,4);ctx.restore()});
+}
+let confParts=[];
+function confetti(ox,oy){ox=ox??VW/2;oy=oy??VH*.35;const cols=['#f2c418','#e8772e','#3fe0d8','#b04fe0','#5aa83a','#fff'];for(let i=0;i<160;i++)confParts.push({x:ox,y:oy,vx:(Math.random()-.5)*700,vy:-Math.random()*500-150,r:Math.random()*6,vr:(Math.random()-.5)*10,c:pick(cols),life:3+Math.random()})}
+
+/* ================= INPUT BINDINGS ================= */
+const KEYMAP={ArrowLeft:'L',KeyA:'L',ArrowRight:'R',KeyD:'R',ArrowUp:'U',KeyW:'U',Space:'U',ArrowDown:'D',KeyS:'D'};
+addEventListener('keydown',e=>{
+ if($('parent').classList.contains('on')){if(e.key==='Escape')closeParent();return}
+ if(e.target&&e.target.tagName==='INPUT')return;
+ if(modal){if(e.code==='Enter'||e.code==='Space'){const c=$('cont');if(c){e.preventDefault();c.click()}}else if(/^Digit[1-4]$/.test(e.code)){const b=panel.querySelectorAll('.opt:not(:disabled)')[+e.code.slice(5)-1];if(b)b.click()}else if(e.code==='Escape'&&!panel.querySelector('.opt')&&!boss){const c=$('cls');if(c)c.click()}return}
+ const k=KEYMAP[e.code];if(!k)return;e.preventDefault();audioInit();
+ if(!held.has(k)){held.delete(k);held.add(k);act(k);lastAct=performance.now();lastKey=k}
+});
+addEventListener('keyup',e=>{const k=KEYMAP[e.code];if(k)held.delete(k)});
+addEventListener('blur',()=>held.clear());
+document.querySelectorAll('#pad button').forEach(b=>{
+ const k=b.dataset.k;
+ b.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();b.classList.add('on');held.delete(k);held.add(k);act(k);lastAct=performance.now();lastKey=k});
+ const up=()=>{b.classList.remove('on');held.delete(k)};
+ b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up);
+ b.addEventListener('contextmenu',e=>e.preventDefault());
+});
+cv.addEventListener('pointerdown',e=>{
+ if(modal)return;audioInit();
+ const cw=VW,ch=VH;let camX=rx*T+T/2-cw/2,camY=ry*T+T/2-ch/2+T*.5;camX=Math.max(0,Math.min(W*T-cw,camX));if(W*T<cw)camX=(W*T-cw)/2;camY=Math.max(-T*3,Math.min(H*T-ch,camY));
+ const cx=Math.floor((e.clientX+camX)/T),cy=Math.floor((e.clientY+camY)/T);
+ const dx=cx-S.px,dy=cy-S.py;
+ if(dx===0&&dy===1)act('D');else if(dx===0&&dy===-1)act('U');
+ else if(dy===0&&Math.abs(dx)>=1)act(dx<0?'L':'R');
+ else if(Math.abs(dx)>=1&&dy<0)act('U');
+ else if(Math.abs(dx)>=1)act(dx<0?'L':'R');
+});
+$('bCraft').onclick=()=>{if(!boss)openCraft()};
+$('bStats').onclick=()=>{if(!boss)openStats()};
+$('bHelp').onclick=()=>{if(!boss)openHelp()};
+$('bMute').onclick=()=>{S.muted=!S.muted;updateHUD();save()};
+
+/* ================= BOOT ================= */
+buildTextures();resize();
+S=load()||newState();
+rx=S.px;ry=S.py;
+for(let i=0;i<7;i++)clouds.push({x:Math.random()*W*T,y:.5+Math.random()*2.5,w:2+Math.random()*3,v:.15+Math.random()*.25});
+updateHUD();
+if(location.hash==='#parents')openParent();else showStart();
+initCloud();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
